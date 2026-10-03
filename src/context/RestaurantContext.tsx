@@ -940,6 +940,15 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   const freeTable = useCallback(
     (tableId: string) => {
       const today = selectedDate;
+      const now = new Date().toISOString();
+      const targetReservations = reservations.filter(
+        (r) =>
+          r.reservationDate === today &&
+          (r.tableId === tableId || (r.assignedTableIds && r.assignedTableIds.includes(tableId))) &&
+          (r.status === 'seated' || r.status === 'confirmed')
+      );
+
+      // 1. Update reservations locally & broadcast
       setReservations((prev) => {
         const updated = prev.map((r) => {
           const isTarget =
@@ -948,20 +957,42 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
             (r.status === 'seated' || r.status === 'confirmed');
 
           if (isTarget) {
-            return { ...r, status: 'completed' as const, completedAt: new Date().toISOString() };
+            return { ...r, status: 'completed' as const, completedAt: now };
           }
           return r;
         });
         realtimeSync.broadcast({ type: 'RESERVATION_UPDATED', payload: updated });
         return updated;
       });
+
+      // 2. Reset table course stage & assistance state
+      setTables((prev) => {
+        const updated = prev.map((t) =>
+          t.id === tableId
+            ? { ...t, courseStage: 'seated' as const, needsAssistance: false, assistanceNote: undefined }
+            : t
+        );
+        realtimeSync.broadcast({ type: 'TABLES_UPDATED', payload: updated });
+        return updated;
+      });
+
+      // 3. Persist each completed reservation to Supabase
+      targetReservations.forEach((res) => {
+        reservationService.updateReservation(res.bookingCode || res.id, {
+          status: 'completed',
+          completedAt: now,
+        }).catch((err) => {
+          console.warn('[RestaurantContext] Free table Supabase sync warning:', err);
+        });
+      });
+
       addToast({
         type: 'info',
         title: `Tavolo ${tableId} Liberato`,
-        message: 'Pronto per il prossimo servizio.',
+        message: 'Tavolo pronto e disponibile per il prossimo turno.',
       });
     },
-    [selectedDate, addToast]
+    [selectedDate, reservations, addToast]
   );
 
   const updateReservation = useCallback((id: string, updates: Partial<Reservation>) => {
