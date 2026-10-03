@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
+import { BACKEND_BASE_URL } from '../../services/reservationService';
 import {
   X,
   Server,
@@ -30,13 +31,20 @@ export const ServerMonitorModal: React.FC<ServerMonitorModalProps> = ({ isOpen, 
     setLoading(true);
     const start = performance.now();
     try {
-      const res = await fetch('/api/health');
+      const res = await fetch(`${BACKEND_BASE_URL}/api/health`);
+      if (!res.ok) {
+        throw new Error(`Server returned HTTP ${res.status}`);
+      }
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('Server starting up or returned non-JSON');
+      }
       const data = await res.json();
       const end = performance.now();
       setPingLatency(Math.round(end - start));
       setHealthData(data);
     } catch (e: any) {
-      console.error('Error fetching server health:', e);
+      console.warn('Server health check note:', e.message);
       setHealthData({ status: 'offline', error: e.message });
     } finally {
       setLoading(false);

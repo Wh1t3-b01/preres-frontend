@@ -59,9 +59,14 @@ class RealtimeSyncManager {
 
         // Silent State Reconciliation upon reconnect
         fetch(`${BACKEND_URL}/api/state`)
-          .then((res) => res.json())
+          .then(async (res) => {
+            if (!res.ok) return null;
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) return null;
+            return res.json();
+          })
           .then((data) => {
-            if (data.success && data.data) {
+            if (data && data.success && data.data) {
               if (Array.isArray(data.data.reservations) && data.data.reservations.length > 0) {
                 this.notifyListeners({ type: 'RESERVATION_UPDATED', payload: data.data.reservations });
               }

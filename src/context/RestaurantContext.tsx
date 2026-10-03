@@ -14,7 +14,7 @@ import { DEFAULT_TABLES, DEFAULT_SETTINGS } from '../data/defaultTables';
 import { getInitialSeedData } from '../data/seedReservations';
 import { generateBookingCode, calcReservationDuration, minsToTime, timeToMins, validateAdvanceBookingSlotLimits } from '../utils/bookingEngine';
 import { realtimeSync, RealtimeEvent } from '../utils/realtimeSync';
-import { reservationService } from '../services/reservationService';
+import { reservationService, BACKEND_BASE_URL } from '../services/reservationService';
 
 interface RestaurantContextType {
   tables: RestaurantTable[];
@@ -874,7 +874,7 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
 
       // Async backend call
       try {
-        fetch(`/api/reservations/${reservationId}/reschedule`, {
+        fetch(`${BACKEND_BASE_URL}/api/reservations/${reservationId}/reschedule`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ newStartTime, newDate: targetDate, newTableId }),
