@@ -48,23 +48,17 @@ export function mapReservationToSupabaseRow(res: Partial<Reservation>) {
   const row: Record<string, any> = {};
   if (res.bookingCode) row.booking_code = res.bookingCode;
   if (res.guestName !== undefined) row.guest_name = res.guestName;
-  if (res.guestPhone !== undefined) row.guest_phone = res.guestPhone;
-  if (res.guestEmail !== undefined) row.guest_email = res.guestEmail;
+  if (res.guestPhone !== undefined && res.guestPhone) row.guest_phone = res.guestPhone;
+  if (res.guestEmail !== undefined && res.guestEmail) row.guest_email = res.guestEmail;
   if (res.reservationDate !== undefined) row.reservation_date = res.reservationDate;
   if (res.startTime !== undefined) row.start_time = res.startTime;
   if (res.endTime !== undefined) row.end_time = res.endTime;
   if (res.durationMins !== undefined) row.duration_mins = res.durationMins;
   if (res.partySize !== undefined) row.party_size = res.partySize;
   if (res.tableId !== undefined) row.table_id = String(res.tableId);
-  if (res.assignedTableIds !== undefined) row.assigned_table_ids = res.assignedTableIds;
   if (res.status !== undefined) row.status = res.status;
-  if (res.notes !== undefined) row.notes = res.notes;
-  if (res.tags !== undefined) row.tags = res.tags;
-  if (res.seatedAt !== undefined) row.seated_at = res.seatedAt;
-  if (res.completedAt !== undefined) row.completed_at = res.completedAt;
-  if (res.isWalkIn !== undefined) row.is_walk_in = res.isWalkIn;
-  if (res.serverName !== undefined) row.server_name = res.serverName;
-  if (res.totalSpendEstimate !== undefined) row.total_spend_estimate = res.totalSpendEstimate;
+  if (res.notes !== undefined && res.notes) row.notes = res.notes;
+  if (res.isWalkIn !== undefined) row.is_walk_in = Boolean(res.isWalkIn);
   return row;
 }
 
