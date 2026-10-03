@@ -1,0 +1,6 @@
+{
+  "name": "Sotto Sotto Restaurant Floor & Booking Manager",
+  "description": "Smart restaurant booking engine, dynamic table merging, and live floor plan management system for Sotto Sotto Bar & Grill.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
