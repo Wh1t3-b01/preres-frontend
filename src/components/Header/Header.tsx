@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import {
   Calendar,
@@ -9,16 +9,18 @@ import {
   ListFilter,
   BarChart3,
   RotateCcw,
-  Users,
-  Layers,
   Move,
-  CheckCircle,
-  UserCheck,
   ShieldCheck,
   Bell,
   Smartphone,
   LogOut,
   User,
+  Sliders,
+  MoreVertical,
+  Activity,
+  ChevronDown,
+  Check,
+  Sparkles,
 } from 'lucide-react';
 import { StaffRole } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -59,6 +61,19 @@ export const Header: React.FC<HeaderProps> = ({
   } = useRestaurant();
 
   const { user, signOut } = useAuth();
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const toolsMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close tools dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (toolsMenuRef.current && !toolsMenuRef.current.contains(event.target as Node)) {
+        setIsToolsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedDate(e.target.value);
@@ -77,81 +92,66 @@ export const Header: React.FC<HeaderProps> = ({
   const waitingCount = waitlist.filter((w) => w.status === 'waiting').length;
 
   return (
-    <header className="sticky top-0 z-30 bg-[#FDFBF7]/95 backdrop-blur-md border-b border-[#1E3A2F]/15 px-4 lg:px-8 py-3 transition-all">
-      <div className="max-w-[1700px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-4">
-        {/* Zone 1: Brand Wordmark & Role Switcher */}
-        <div className="flex items-center justify-between w-full xl:w-auto gap-4">
+    <header className="sticky top-0 z-30 bg-[#FDFBF7]/95 backdrop-blur-md border-b border-[#1E3A2F]/15 px-3 sm:px-6 py-2.5 transition-all">
+      <div className="max-w-[1780px] mx-auto flex items-center justify-between gap-3 lg:gap-6">
+        
+        {/* ========================================================= */}
+        {/* ZONE 1: BRAND LOGO & LIVE STATUS (Zero-wrap, Prestige)     */}
+        {/* ========================================================= */}
+        <div className="flex items-center gap-3 shrink-0">
           <div
-            className="flex items-center gap-2.5 cursor-pointer"
+            className="flex items-center gap-2.5 cursor-pointer group"
             onClick={() => setCurrentView('floor')}
+            title="Sotto Sotto Bar & Grill — Dashboard Sala"
           >
-            <div className="w-10 h-10 rounded-xl bg-[#1E3A2F] text-amber-100 flex items-center justify-center font-brand font-bold text-xl shadow-sm border border-[#1E3A2F]/20">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#1E3A2F] text-amber-300 flex items-center justify-center font-brand font-bold text-lg sm:text-xl shadow-xs border border-amber-400/30 group-hover:scale-105 transition-transform">
               S
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-brand font-bold tracking-tight text-[#1E3A2F] leading-tight">
-                  {settings.name}
-                </h1>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                  Pro SaaS
+            <div className="flex flex-col whitespace-nowrap">
+              <div className="flex items-center gap-1.5">
+                <span className="text-base sm:text-lg font-brand font-bold tracking-tight text-[#1E3A2F] leading-none">
+                  SOTTO SOTTO
+                </span>
+                <span className="hidden md:inline-block text-[9px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-amber-100/80 text-amber-950 border border-amber-300/60 leading-none">
+                  BAR & GRILL
                 </span>
               </div>
-              <p className="text-[11px] text-[#1E3A2F]/60 font-medium">
-                {settings.tagline}
-              </p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenServerMonitor?.();
+                  }}
+                  className="flex items-center gap-1 text-[10px] font-medium text-stone-500 hover:text-emerald-700 transition"
+                  title="Stato Sincronizzazione Realtime"
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      isRealtimeConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                    }`}
+                  />
+                  <span>
+                    {isRealtimeConnected
+                      ? `Live · ${connectedPeersCount} ${connectedPeersCount === 1 ? 'postazione' : 'postazioni'}`
+                      : 'Riconnessione...'}
+                  </span>
+                </button>
+              </div>
             </div>
-          </div>
-
-          {/* RBAC Staff Role Selector */}
-          <div className="flex items-center bg-[#1E3A2F]/5 p-1 rounded-xl border border-[#1E3A2F]/10 text-xs font-semibold">
-            <button
-              onClick={() => setStaffRole('manager')}
-              className={`px-2.5 py-1 rounded-lg transition ${
-                staffRole === 'manager'
-                  ? 'bg-[#1E3A2F] text-amber-100 shadow-xs'
-                  : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F]'
-              }`}
-            >
-              Manager
-            </button>
-            <button
-              onClick={() => {
-                setStaffRole('host');
-                if (currentView === 'waiter_touch') setCurrentView('floor');
-              }}
-              className={`px-2.5 py-1 rounded-lg transition ${
-                staffRole === 'host'
-                  ? 'bg-[#1E3A2F] text-amber-100 shadow-xs'
-                  : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F]'
-              }`}
-            >
-              Host / Accoglienza
-            </button>
-            <button
-              onClick={() => {
-                setStaffRole('waiter');
-                setCurrentView('waiter_touch');
-              }}
-              className={`px-2.5 py-1 rounded-lg transition ${
-                staffRole === 'waiter'
-                  ? 'bg-[#1E3A2F] text-amber-100 shadow-xs'
-                  : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F]'
-              }`}
-            >
-              Cameriere Touch
-            </button>
           </div>
         </div>
 
-        {/* Zone 2: Navigation Views */}
-        <nav className="flex items-center gap-1 p-1 bg-[#1E3A2F]/5 rounded-xl border border-[#1E3A2F]/10 overflow-x-auto max-w-full">
+        {/* ========================================================= */}
+        {/* ZONE 2: PRIMARY NAVIGATION BAR (No Scrollbar, Segmented)   */}
+        {/* ========================================================= */}
+        <nav className="hidden md:flex items-center gap-1 p-1 bg-[#1E3A2F]/5 rounded-2xl border border-[#1E3A2F]/10 shrink-0">
           <button
             onClick={() => setCurrentView('floor')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
               currentView === 'floor'
-                ? 'bg-white text-[#1E3A2F] shadow-sm font-bold border border-[#1E3A2F]/10'
-                : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F] hover:bg-white/50'
+                ? 'bg-white text-[#1E3A2F] shadow-xs font-bold border border-[#1E3A2F]/10'
+                : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F] hover:bg-white/60'
             }`}
           >
             <LayoutGrid className="w-3.5 h-3.5" />
@@ -159,11 +159,23 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <button
+            onClick={() => setCurrentView('timeline')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+              currentView === 'timeline'
+                ? 'bg-white text-[#1E3A2F] shadow-xs font-bold border border-[#1E3A2F]/10'
+                : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F] hover:bg-white/60'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>Timeline</span>
+          </button>
+
+          <button
             onClick={() => setCurrentView('reservations')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
               currentView === 'reservations'
-                ? 'bg-white text-[#1E3A2F] shadow-sm font-bold border border-[#1E3A2F]/10'
-                : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F] hover:bg-white/50'
+                ? 'bg-white text-[#1E3A2F] shadow-xs font-bold border border-[#1E3A2F]/10'
+                : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F] hover:bg-white/60'
             }`}
           >
             <ListFilter className="w-3.5 h-3.5" />
@@ -172,88 +184,79 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={() => setCurrentView('waitlist')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap relative ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap relative ${
               currentView === 'waitlist'
-                ? 'bg-white text-[#1E3A2F] shadow-sm font-bold border border-[#1E3A2F]/10'
-                : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F] hover:bg-white/50'
+                ? 'bg-white text-[#1E3A2F] shadow-xs font-bold border border-[#1E3A2F]/10'
+                : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F] hover:bg-white/60'
             }`}
           >
             <Bell className="w-3.5 h-3.5 text-amber-600" />
-            <span>Lista d'Attesa</span>
+            <span>Attesa</span>
             {waitingCount > 0 && (
-              <span className="w-4 h-4 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center">
+              <span className="w-4 h-4 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
                 {waitingCount}
               </span>
             )}
           </button>
 
           <button
-            onClick={() => setCurrentView('waiter_touch')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-              currentView === 'waiter_touch'
-                ? 'bg-white text-[#1E3A2F] shadow-sm font-bold border border-[#1E3A2F]/10'
-                : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F] hover:bg-white/50'
-            }`}
-          >
-            <Smartphone className="w-3.5 h-3.5 text-blue-600" />
-            <span>Touch Portate</span>
-          </button>
-
-          <button
-            onClick={() => setCurrentView('timeline')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-              currentView === 'timeline'
-                ? 'bg-white text-[#1E3A2F] shadow-sm font-bold border border-[#1E3A2F]/10'
-                : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F] hover:bg-white/50'
-            }`}
-          >
-            <Clock className="w-3.5 h-3.5" />
-            <span>Timeline</span>
-          </button>
-
-          <button
             onClick={() => setCurrentView('stats')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
               currentView === 'stats'
-                ? 'bg-white text-[#1E3A2F] shadow-sm font-bold border border-[#1E3A2F]/10'
-                : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F] hover:bg-white/50'
+                ? 'bg-white text-[#1E3A2F] shadow-xs font-bold border border-[#1E3A2F]/10'
+                : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F] hover:bg-white/60'
             }`}
           >
             <BarChart3 className="w-3.5 h-3.5" />
-            <span>Executive Analytics</span>
+            <span>Analytics</span>
+          </button>
+
+          <button
+            onClick={() => setCurrentView('waiter_touch')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+              currentView === 'waiter_touch'
+                ? 'bg-white text-[#1E3A2F] shadow-xs font-bold border border-[#1E3A2F]/10'
+                : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F] hover:bg-white/60'
+            }`}
+          >
+            <Smartphone className="w-3.5 h-3.5 text-blue-600" />
+            <span>Touch Sala</span>
           </button>
         </nav>
 
-        {/* Zone 3: Actions & Date Controls */}
-        <div className="flex items-center flex-wrap gap-2.5 w-full xl:w-auto justify-end">
-          {/* Spatial Layout Mode Toggle (for Managers) */}
+        {/* ========================================================= */}
+        {/* ZONE 3: ACTIONS, TIME CONTROLS & LUXURY TOOLS DROPDOWN    */}
+        {/* ========================================================= */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          
+          {/* Spatial Layout Drag & Drop Toggle (Floor View only) */}
           {staffRole === 'manager' && currentView === 'floor' && (
             <button
               onClick={() => setIsLayoutEditMode(!isLayoutEditMode)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition shadow-xs whitespace-nowrap ${
+              className={`hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-xs whitespace-nowrap ${
                 isLayoutEditMode
-                  ? 'bg-amber-400 text-amber-950 border-2 border-amber-600 ring-2 ring-amber-300'
+                  ? 'bg-amber-400 text-amber-950 border-2 border-amber-600 ring-2 ring-amber-300 animate-pulse'
                   : 'bg-white border border-[#1E3A2F]/20 text-[#1E3A2F] hover:bg-[#1E3A2F]/5'
               }`}
             >
               <Move className="w-3.5 h-3.5" />
-              <span>{isLayoutEditMode ? 'Salva & Blocca Layout' : 'Modifica Layout (Drag & Drop)'}</span>
+              <span>{isLayoutEditMode ? 'Salva Layout' : 'Modifica Piantina'}</span>
             </button>
           )}
 
-          {/* Date & Time Picker */}
-          <div className="flex items-center bg-white border border-[#1E3A2F]/20 rounded-xl px-2.5 py-1.5 shadow-xs gap-2 text-xs">
+          {/* Date & Time Widget */}
+          <div className="flex items-center bg-white border border-[#1E3A2F]/20 rounded-xl px-2.5 py-1 shadow-2xs gap-1.5 text-xs">
             <div className="flex items-center gap-1 text-[#1E3A2F]">
               <Calendar className="w-3.5 h-3.5 text-[#1E3A2F]/60" />
               <input
                 type="date"
                 value={selectedDate}
                 onChange={handleDateChange}
-                className="bg-transparent border-0 font-medium text-xs text-[#1E3A2F] focus:outline-none cursor-pointer"
+                className="bg-transparent border-0 font-medium text-xs text-[#1E3A2F] focus:outline-none cursor-pointer w-28 sm:w-auto"
               />
             </div>
-            <span className="text-[#1E3A2F]/20">|</span>
-            <div className="flex items-center gap-1 text-[#1E3A2F]">
+            <span className="text-[#1E3A2F]/20 hidden sm:inline">|</span>
+            <div className="hidden sm:flex items-center gap-1 text-[#1E3A2F]">
               <Clock className="w-3.5 h-3.5 text-[#1E3A2F]/60" />
               <input
                 type="time"
@@ -262,15 +265,15 @@ export const Header: React.FC<HeaderProps> = ({
                   setSelectedTime(e.target.value);
                   setIsLiveMode(false);
                 }}
-                className="bg-transparent border-0 font-mono-num font-bold text-xs text-[#1E3A2F] focus:outline-none w-20 px-0.5 cursor-pointer"
+                className="bg-transparent border-0 font-bold text-xs text-[#1E3A2F] focus:outline-none w-16 px-0.5 cursor-pointer"
               />
             </div>
             <button
               onClick={setNowTime}
-              title="Sincronizza con ora attuale"
-              className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase transition ${
+              title="Sincronizza orario con tempo reale"
+              className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase transition ${
                 isLiveMode
-                  ? 'bg-[#1E3A2F] text-amber-100 shadow-xs'
+                  ? 'bg-[#1E3A2F] text-amber-100 shadow-2xs'
                   : 'bg-[#1E3A2F]/10 text-[#1E3A2F] hover:bg-[#1E3A2F]/20'
               }`}
             >
@@ -278,91 +281,224 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
 
-          {/* WebSocket Multi-Device Live Sync Status */}
-          <button
-            type="button"
-            onClick={onOpenServerMonitor}
-            title={isRealtimeConnected ? "Visualizza monitor del Server e metriche WebSocket" : "Riconnessione automatica al server in corso..."}
-            className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold shadow-2xs transition cursor-pointer active:scale-95 ${
-              isRealtimeConnected
-                ? 'bg-emerald-50 hover:bg-emerald-100 border border-emerald-300/80 text-emerald-800'
-                : 'bg-amber-50 hover:bg-amber-100 border border-amber-300/80 text-amber-900 animate-pulse'
-            }`}
-          >
-            <span
-              className={`w-2 h-2 rounded-full ${
-                isRealtimeConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
-              }`}
-            ></span>
-            <span>
-              {isRealtimeConnected
-                ? `WebSocket Live (${connectedPeersCount} ${connectedPeersCount === 1 ? 'dispositivo' : 'dispositivi'})`
-                : 'Riconnessione live in corso...'}
-            </span>
-          </button>
-
-          {/* Quick Walk-in Button */}
+          {/* Quick Action: Walk-in */}
           <button
             onClick={onOpenWalkInModal}
-            className="flex items-center gap-1.5 bg-[#F6F2E9] hover:bg-[#EDE7DA] text-[#1E3A2F] border border-[#1E3A2F]/20 px-3 py-2 rounded-xl text-xs font-semibold transition shadow-xs whitespace-nowrap"
+            className="flex items-center gap-1.5 bg-[#F6F2E9] hover:bg-[#EDE7DA] text-[#1E3A2F] border border-[#1E3A2F]/20 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold transition shadow-2xs whitespace-nowrap active:scale-95"
+            title="Accomoda ospiti senza prenotazione"
           >
             <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-600" />
-            <span>Walk-in</span>
+            <span className="hidden sm:inline">Walk-in</span>
           </button>
 
-          {/* New Reservation CTA */}
+          {/* Primary CTA: + Prenota */}
           <button
             onClick={onOpenBookingModal}
-            className="flex items-center gap-1.5 bg-[#6B3FA0] hover:bg-[#5A338A] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap active:scale-[0.98]"
+            className="flex items-center gap-1.5 bg-[#6B3FA0] hover:bg-[#5A338A] text-white px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>Prenota</span>
           </button>
 
-          {/* Database & Supabase SQL Schema Button */}
-          {staffRole === 'manager' && (
+          {/* ========================================================= */}
+          {/* CONSOLIDATED TOOLS & ROLE MENU (Clean Graphic Design)     */}
+          {/* ========================================================= */}
+          <div className="relative" ref={toolsMenuRef}>
             <button
-              onClick={onOpenDatabaseModal}
-              title="Schema Database & SQL Supabase"
-              className="flex items-center gap-1.5 bg-stone-100 hover:bg-stone-200 text-[#1E3A2F] border border-[#1E3A2F]/20 px-3 py-2 rounded-xl text-xs font-semibold transition shadow-2xs whitespace-nowrap"
+              onClick={() => setIsToolsOpen(!isToolsOpen)}
+              className={`flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                isToolsOpen
+                  ? 'bg-[#1E3A2F] text-amber-100 border-[#1E3A2F]'
+                  : 'bg-white border-[#1E3A2F]/20 text-[#1E3A2F] hover:bg-[#1E3A2F]/5'
+              }`}
+              title="Strumenti, Ruolo & Impostazioni"
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-[#1E3A2F]" />
-              <span>SQL Supabase</span>
+              <Sliders className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline capitalize">{staffRole}</span>
+              <ChevronDown className="w-3 h-3 opacity-60" />
             </button>
-          )}
 
-          {/* Demo Data Reset */}
-          <button
-            onClick={() => {
-              if (confirm('Vuoi ripristinare i dati e il layout demo di Sotto Sotto?')) {
-                resetToDefaults();
-              }
-            }}
-            title="Ripristina dati demo"
-            className="p-2 text-[#1E3A2F]/50 hover:text-[#1E3A2F] hover:bg-[#1E3A2F]/5 rounded-lg transition cursor-pointer"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
+            {/* Dropdown Menu */}
+            {isToolsOpen && (
+              <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-stone-200 py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                
+                {/* Staff Role Switcher */}
+                <div className="px-3 py-2 border-b border-stone-100">
+                  <p className="text-[10px] uppercase font-bold text-stone-400 tracking-wider mb-1.5">
+                    Ruolo Operativo Staff
+                  </p>
+                  <div className="grid grid-cols-3 gap-1 bg-stone-100 p-1 rounded-xl text-[11px] font-semibold">
+                    <button
+                      onClick={() => {
+                        setStaffRole('manager');
+                        setIsToolsOpen(false);
+                      }}
+                      className={`py-1 rounded-lg transition ${
+                        staffRole === 'manager'
+                          ? 'bg-[#1E3A2F] text-amber-100 shadow-2xs font-bold'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      Manager
+                    </button>
+                    <button
+                      onClick={() => {
+                        setStaffRole('host');
+                        if (currentView === 'waiter_touch') setCurrentView('floor');
+                        setIsToolsOpen(false);
+                      }}
+                      className={`py-1 rounded-lg transition ${
+                        staffRole === 'host'
+                          ? 'bg-[#1E3A2F] text-amber-100 shadow-2xs font-bold'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      Host
+                    </button>
+                    <button
+                      onClick={() => {
+                        setStaffRole('waiter');
+                        setCurrentView('waiter_touch');
+                        setIsToolsOpen(false);
+                      }}
+                      className={`py-1 rounded-lg transition ${
+                        staffRole === 'waiter'
+                          ? 'bg-[#1E3A2F] text-amber-100 shadow-2xs font-bold'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      Cameriere
+                    </button>
+                  </div>
+                </div>
 
-          {/* User Account & Logout */}
-          {user && (
-            <div className="flex items-center gap-1.5 pl-1.5 border-l border-[#1E3A2F]/15">
-              <span
-                className="hidden lg:inline-block max-w-[120px] truncate text-[11px] font-medium text-stone-600"
-                title={user.email}
-              >
-                {user.email?.split('@')[0]}
-              </span>
-              <button
-                onClick={() => signOut()}
-                title={`Disconnetti (${user.email})`}
-                className="flex items-center gap-1 p-2 text-rose-700/80 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition text-xs font-semibold cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Esci</span>
-              </button>
-            </div>
-          )}
+                {/* Mobile Navigation Links (if screen is small) */}
+                <div className="md:hidden px-2 py-1 border-b border-stone-100">
+                  <p className="text-[10px] uppercase font-bold text-stone-400 tracking-wider px-2 py-1">
+                    Viste Sala
+                  </p>
+                  <button
+                    onClick={() => {
+                      setCurrentView('floor');
+                      setIsToolsOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 rounded-lg text-left"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5 text-stone-500" />
+                    <span>Mappa Sala</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCurrentView('timeline');
+                      setIsToolsOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 rounded-lg text-left"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-stone-500" />
+                    <span>Timeline Oraria</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCurrentView('reservations');
+                      setIsToolsOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 rounded-lg text-left"
+                  >
+                    <ListFilter className="w-3.5 h-3.5 text-stone-500" />
+                    <span>Registro Prenotazioni</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCurrentView('waitlist');
+                      setIsToolsOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 rounded-lg text-left"
+                  >
+                    <Bell className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Lista d'Attesa</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCurrentView('stats');
+                      setIsToolsOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-50 rounded-lg text-left"
+                  >
+                    <BarChart3 className="w-3.5 h-3.5 text-stone-500" />
+                    <span>Executive Analytics</span>
+                  </button>
+                </div>
+
+                {/* System Tools */}
+                <div className="px-2 py-1 border-b border-stone-100">
+                  <p className="text-[10px] uppercase font-bold text-stone-400 tracking-wider px-2 py-1">
+                    Integrazioni & Sistema
+                  </p>
+
+                  <button
+                    onClick={() => {
+                      onOpenServerMonitor?.();
+                      setIsToolsOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs text-stone-700 hover:bg-stone-50 rounded-xl transition text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-emerald-600" />
+                      <span>Monitor Server & WebSocket</span>
+                    </div>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      onOpenDatabaseModal();
+                      setIsToolsOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-stone-700 hover:bg-stone-50 rounded-xl transition text-left"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-purple-600" />
+                    <span>Schema Supabase & RLS</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (confirm('Vuoi ripristinare i dati e il layout demo di Sotto Sotto?')) {
+                        resetToDefaults();
+                      }
+                      setIsToolsOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-amber-700 hover:bg-amber-50 rounded-xl transition text-left"
+                  >
+                    <RotateCcw className="w-4 h-4 text-amber-600" />
+                    <span>Ripristina Dati Demo</span>
+                  </button>
+                </div>
+
+                {/* User Session & Logout */}
+                {user && (
+                  <div className="px-3 pt-2 pb-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 truncate">
+                        <div className="w-6 h-6 rounded-full bg-[#1E3A2F] text-amber-200 text-[10px] font-bold flex items-center justify-center">
+                          {user.email?.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="text-xs font-medium text-stone-600 truncate max-w-[140px]">
+                          {user.email}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => signOut()}
+                        className="flex items-center gap-1 text-xs text-rose-600 hover:text-rose-800 font-semibold p-1 hover:bg-rose-50 rounded-lg transition"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Esci</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>
