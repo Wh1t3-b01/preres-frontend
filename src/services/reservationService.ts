@@ -113,17 +113,50 @@ export const reservationService = {
     const supabasePayload = mapReservationToSupabaseRow(reservation);
 
     if (isSupabaseConfigured) {
+      console.log('[ReservationService] 📡 Saving to Supabase "reservations" table:', supabasePayload);
       try {
         const { data, error } = await supabase
           .from('reservations')
           .insert([supabasePayload])
-          .select()
-          .single();
+          .select();
 
         if (error) {
-          console.error('[ReservationService] Supabase insert error:', error.message);
-        } else if (data) {
-          const created = mapSupabaseRowToReservation(data);
+          console.error('[ReservationService] ❌ Supabase insert failed:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+          });
+
+          // Attempt retry with minimal essential schema columns
+          const minimalPayload: Record<string, any> = {
+            booking_code: supabasePayload.booking_code,
+            guest_name: supabasePayload.guest_name,
+            guest_phone: supabasePayload.guest_phone || null,
+            reservation_date: supabasePayload.reservation_date,
+            start_time: supabasePayload.start_time,
+            end_time: supabasePayload.end_time,
+            party_size: supabasePayload.party_size || 2,
+            table_id: String(supabasePayload.table_id || '10'),
+            status: supabasePayload.status || 'confirmed',
+          };
+          console.log('[ReservationService] 🔄 Retrying with standard minimal schema:', minimalPayload);
+          const retryRes = await supabase.from('reservations').insert([minimalPayload]).select();
+          
+          if (retryRes.error) {
+            console.error('[ReservationService] ❌ Minimal retry also failed:', retryRes.error.message, retryRes.error);
+          } else if (retryRes.data && retryRes.data.length > 0) {
+            console.log('[ReservationService] ✅ Minimal schema write succeeded on Supabase!', retryRes.data[0]);
+            const created = mapSupabaseRowToReservation(retryRes.data[0]);
+            realtimeSync.broadcast({
+              type: 'RESERVATION_CREATED',
+              payload: created,
+            });
+            return { success: true, data: created };
+          }
+        } else if (data && data.length > 0) {
+          console.log('[ReservationService] ✅ Direct write to Supabase PostgreSQL succeeded:', data[0]);
+          const created = mapSupabaseRowToReservation(data[0]);
           
           // Broadcast to Render backend WebSocket
           realtimeSync.broadcast({
@@ -141,8 +174,10 @@ export const reservationService = {
           return { success: true, data: created };
         }
       } catch (err: any) {
-        console.warn('[ReservationService] Supabase insert fallback:', err);
+        console.error('[ReservationService] ❌ Supabase insert exception:', err);
       }
+    } else {
+      console.warn('[ReservationService] ⚠️ Supabase not configured in client environment. Falling back to backend/local.');
     }
 
     // Render backend direct sync fallback
