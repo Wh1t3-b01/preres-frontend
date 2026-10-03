@@ -866,10 +866,15 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
         )
       );
 
+      // Persist update directly to Supabase
+      reservationService.updateReservation(currentRes.bookingCode || reservationId, updatedRes).catch((err) => {
+        console.warn('Reschedule Supabase save notice:', err);
+      });
+
       // Broadcast to all devices
       realtimeSync.broadcast({
         type: 'RESERVATION_UPDATED',
-        payload: { action: 'update', id: reservationId, updates: updatedRes },
+        payload: { action: 'update', id: reservationId, bookingCode: currentRes.bookingCode, updates: updatedRes },
       });
 
       // Async backend call
@@ -895,13 +900,17 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   );
 
   const seatReservation = useCallback((id: string) => {
+    const now = new Date().toISOString();
     setReservations((prev) => {
       const updated = prev.map((r) =>
-        r.id === id ? { ...r, status: 'seated' as const, seatedAt: new Date().toISOString() } : r
+        r.id === id || r.bookingCode === id ? { ...r, status: 'seated' as const, seatedAt: now } : r
       );
       realtimeSync.broadcast({ type: 'RESERVATION_UPDATED', payload: updated });
       return updated;
     });
+
+    reservationService.updateReservation(id, { status: 'seated', seatedAt: now }).catch(() => {});
+
     addToast({
       type: 'success',
       title: 'Ospiti Seduti al Tavolo',
@@ -910,13 +919,17 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   }, [addToast]);
 
   const completeReservation = useCallback((id: string) => {
+    const now = new Date().toISOString();
     setReservations((prev) => {
       const updated = prev.map((r) =>
-        r.id === id ? { ...r, status: 'completed' as const, completedAt: new Date().toISOString() } : r
+        r.id === id || r.bookingCode === id ? { ...r, status: 'completed' as const, completedAt: now } : r
       );
       realtimeSync.broadcast({ type: 'RESERVATION_UPDATED', payload: updated });
       return updated;
     });
+
+    reservationService.updateReservation(id, { status: 'completed', completedAt: now }).catch(() => {});
+
     addToast({
       type: 'info',
       title: 'Tavolo Liberato',

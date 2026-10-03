@@ -206,27 +206,31 @@ export const reservationService = {
 
     if (isSupabaseConfigured) {
       try {
-        // Try update by booking_code or ID
+        const isNumericId = /^\d+$/.test(id);
+        const code = updates.bookingCode || (!isNumericId ? id : undefined);
+
         let query = supabase.from('reservations').update(supabasePayload);
-        if (updates.bookingCode) {
-          query = query.or(`id.eq.${id},booking_code.eq.${updates.bookingCode}`);
-        } else {
-          query = query.or(`id.eq.${id},booking_code.eq.${id}`);
+        if (code) {
+          query = query.eq('booking_code', code);
+        } else if (isNumericId) {
+          query = query.eq('id', Number(id));
         }
 
-        const { error } = await query;
+        const { data, error } = await query.select();
         if (error) {
-          console.warn('[ReservationService] Supabase update warning:', error.message);
+          console.error('[ReservationService] ❌ Supabase update error:', error.message, error);
+        } else {
+          console.log('[ReservationService] ✅ Supabase update successful in PostgreSQL:', data);
         }
       } catch (err) {
-        console.warn('[ReservationService] Supabase update fallback:', err);
+        console.warn('[ReservationService] Supabase update exception:', err);
       }
     }
 
     // Broadcast update to all devices
     realtimeSync.broadcast({
       type: 'RESERVATION_UPDATED',
-      payload: { id, updates },
+      payload: { id, bookingCode: updates.bookingCode || id, updates },
     });
 
     // Notify Render backend
@@ -245,12 +249,21 @@ export const reservationService = {
   async deleteReservation(bookingCodeOrId: string): Promise<{ success: boolean; error?: string }> {
     if (isSupabaseConfigured) {
       try {
-        await supabase
-          .from('reservations')
-          .delete()
-          .or(`id.eq.${bookingCodeOrId},booking_code.eq.${bookingCodeOrId}`);
+        const isNumeric = /^\d+$/.test(bookingCodeOrId);
+        let query = supabase.from('reservations').delete();
+        if (isNumeric) {
+          query = query.eq('id', Number(bookingCodeOrId));
+        } else {
+          query = query.eq('booking_code', bookingCodeOrId);
+        }
+        const { error } = await query;
+        if (error) {
+          console.error('[ReservationService] ❌ Supabase delete error:', error.message);
+        } else {
+          console.log('[ReservationService] ✅ Supabase delete successful for:', bookingCodeOrId);
+        }
       } catch (err) {
-        console.warn('[ReservationService] Supabase delete warning:', err);
+        console.warn('[ReservationService] Supabase delete exception:', err);
       }
     }
 
