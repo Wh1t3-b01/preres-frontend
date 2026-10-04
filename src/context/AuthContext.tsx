@@ -135,8 +135,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             let errorMsg = signInError.message;
             if (signInError.status === 429 || signInError.message.includes('rate limit')) {
               errorMsg = 'Troppi tentativi di accesso. Riprova tra qualche minuto per ragioni di sicurezza.';
-            } else if (signInError.message.toLowerCase().includes('invalid login credentials')) {
-              errorMsg = 'Email o password non corretti. Verifica le credenziali inserite.';
+            } else if (
+              signInError.message.toLowerCase().includes('invalid login credentials') ||
+              signInError.message.toLowerCase().includes('user not found')
+            ) {
+              errorMsg = 'Email non presente nel database o password non corretta. Verifica le credenziali inserite.';
             } else if (signInError.message.toLowerCase().includes('email not confirmed')) {
               errorMsg = "L'indirizzo email non è stato ancora confermato. Controlla la tua casella di posta.";
             }
@@ -222,6 +225,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             let errorMsg = resetError.message;
             if (resetError.status === 429) {
               errorMsg = 'Troppe richieste di recupero. Attendi qualche minuto prima di riprovare.';
+            } else if (
+              resetError.message.toLowerCase().includes('user not found') ||
+              resetError.message.toLowerCase().includes('not found') ||
+              resetError.message.toLowerCase().includes('invalid email') ||
+              resetError.message.toLowerCase().includes('not allowed')
+            ) {
+              errorMsg = 'Email non presente nel database. Questo indirizzo non è registrato né autorizzato nel sistema PRERES™.';
             }
             setError(errorMsg);
             setIsLoading(false);
@@ -231,11 +241,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return { success: true };
         } else {
           await new Promise((res) => setTimeout(res, 600));
+          // In demo mode validate authorized domains and staff patterns
+          const isRecognized =
+            cleanEmail.includes('sotto') ||
+            cleanEmail.includes('admin') ||
+            cleanEmail.includes('manager') ||
+            cleanEmail.includes('host') ||
+            cleanEmail.includes('waiter') ||
+            cleanEmail.includes('staff') ||
+            cleanEmail.endsWith('@sottosotto.it') ||
+            cleanEmail === 'ironwhisper69@gmail.com';
+
+          if (!isRecognized) {
+            const err = 'Email non presente nel database. Questo indirizzo non è registrato né autorizzato nel sistema PRERES™.';
+            setError(err);
+            setIsLoading(false);
+            return { success: false, error: err };
+          }
+
           setIsLoading(false);
           return { success: true };
         }
       } catch (err: any) {
-        const msg = err?.message || 'Impossibile inviare il link di recupero password.';
+        const msg = err?.message || 'Email non presente nel database. Questo indirizzo non è registrato né autorizzato nel sistema PRERES™.';
         setError(msg);
         setIsLoading(false);
         return { success: false, error: msg };
