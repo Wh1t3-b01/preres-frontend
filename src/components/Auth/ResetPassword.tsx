@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 export const ResetPassword: React.FC = () => {
-  const { updatePassword, isLoading, error: authError, clearError } = useAuth();
+  const { updatePassword, isLoading, error: authError, clearError, exitRecoveryMode } = useAuth();
   const navigate = useNavigate();
 
   const [newPassword, setNewPassword] = useState('');
@@ -132,7 +132,7 @@ export const ResetPassword: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full mt-3 py-3 px-4 bg-gradient-to-r from-[#8B31E0] to-[#7928CA] hover:from-[#9D44F7] hover:to-[#8B31E0] text-white font-semibold text-xs rounded-xl shadow-lg shadow-[#8B31E0]/25 transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                className="w-full mt-3 py-3 px-4 bg-gradient-to-r from-[#8B31E0] to-[#7928CA] hover:from-[#9D44F7] hover:to-[#8B31E0] text-white font-semibold text-xs rounded-xl shadow-lg shadow-[#8B31E0]/25 transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
               >
                 {isLoading ? (
                   <>
@@ -146,6 +146,19 @@ export const ResetPassword: React.FC = () => {
                   </>
                 )}
               </button>
+
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    exitRecoveryMode();
+                    navigate('/login', { replace: true });
+                  }}
+                  className="text-xs font-semibold text-slate-400 hover:text-white cursor-pointer"
+                >
+                  Annulla e Torna al Login
+                </button>
+              </div>
             </form>
           </>
         )}
