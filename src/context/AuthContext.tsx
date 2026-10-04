@@ -1,7 +1,7 @@
 /**
- * Sotto Sotto Bar & Grill — Global Session & Authentication Context
+ * Sotto Sotto Bar & Grill / PRERES™ — Global Session & Authentication Context
  * Manages Supabase Auth lifecycle, session persistence, role-based access control,
- * and forgot password / password reset recovery flows.
+ * and seamless password reset recovery flows.
  */
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
@@ -14,6 +14,7 @@ export interface AuthContextType {
   role: StaffRole;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isRecoveryMode: boolean;
   error: string | null;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
@@ -21,6 +22,7 @@ export interface AuthContextType {
   updatePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   switchRole: (newRole: StaffRole) => void;
   clearError: () => void;
+  exitRecoveryMode: () => void;
 }
 
 const DEMO_STORAGE_KEY = 'sotto_demo_auth_session';
@@ -33,6 +35,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [role, setRole] = useState<StaffRole>('manager');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Detect if user landed on the page with a password recovery token in URL hash or query
+  const [isRecoveryMode, setIsRecoveryMode] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return (
+      window.location.hash.includes('type=recovery') ||
+      window.location.search.includes('type=recovery') ||
+      window.location.pathname === '/reset-password'
+    );
+  });
 
   // Extract staff role from Supabase user metadata or app metadata
   const extractRole = (currentUser: User | null): StaffRole => {
@@ -49,6 +61,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Initialize session and subscribe to auth state changes
   useEffect(() => {
     let isMounted = true;
+
+    // Check if URL currently has recovery payload
+    if (
+      typeof window !== 'undefined' &&
+      (window.location.hash.includes('type=recovery') ||
+       window.location.search.includes('type=recovery') ||
+       window.location.pathname === '/reset-password')
+    ) {
+      setIsRecoveryMode(true);
+    }
 
     async function initAuth() {
       try {
@@ -95,6 +117,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: authListener } = supabase.auth.onAuthStateChange(
         async (event, currentSession) => {
           if (!isMounted) return;
+          
+          if (event === 'PASSWORD_RECOVERY') {
+            setIsRecoveryMode(true);
+          }
+
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
           if (currentSession?.user) {
@@ -116,6 +143,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const clearError = useCallback(() => setError(null), []);
+  const exitRecoveryMode = useCallback(() => {
+    setIsRecoveryMode(false);
+    if (typeof window !== 'undefined' && window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
 
   const signIn = useCallback(
     async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
@@ -134,7 +167,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (signInError) {
             let errorMsg = signInError.message;
             if (signInError.status === 429 || signInError.message.includes('rate limit')) {
-              errorMsg = 'Troppi tentativi di accesso. Riprova tra qualche minuto per ragioni di sicurezza.';
+              errorMsg = 'Troppi tentativi di accesso. Attendi qualche minuto per ragioni di sicurezza.';
             } else if (
               signInError.message.toLowerCase().includes('invalid login credentials') ||
               signInError.message.toLowerCase().includes('user not found')
@@ -216,7 +249,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       try {
         if (isSupabaseConfigured) {
-          const redirectTo = `${window.location.origin}/reset-password`;
+          // Point redirect directly to root origin (immune to 404 subpath issues)
+          const redirectTo = `${window.location.origin}/`;
           const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
             redirectTo,
           });
@@ -292,10 +326,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (data.user) {
             setUser(data.user);
           }
+          
+          setIsRecoveryMode(false);
+          if (typeof window !== 'undefined' && window.location.hash) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+
           setIsLoading(false);
           return { success: true };
         } else {
           await new Promise((res) => setTimeout(res, 500));
+          setIsRecoveryMode(false);
           setIsLoading(false);
           return { success: true };
         }
@@ -319,7 +360,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       setUser(null);
       setSession(null);
-      setError(null);
+      setRole('manager');
+      setIsRecoveryMode(false);
     } catch (err) {
       console.error('[Supabase Auth] Sign out error:', err);
     } finally {
@@ -330,12 +372,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const switchRole = useCallback((newRole: StaffRole) => {
     setRole(newRole);
     if (!isSupabaseConfigured) {
-      const saved = localStorage.getItem(DEMO_STORAGE_KEY);
-      if (saved) {
+      const savedDemo = localStorage.getItem(DEMO_STORAGE_KEY);
+      if (savedDemo) {
         try {
-          const parsed = JSON.parse(saved);
+          const parsed = JSON.parse(savedDemo);
           parsed.role = newRole;
-          if (parsed.user?.user_metadata) parsed.user.user_metadata.role = newRole;
           localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(parsed));
         } catch (e) {}
       }
@@ -348,7 +389,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       session,
       role,
       isLoading,
-      isAuthenticated: Boolean(user && session),
+      isAuthenticated: Boolean(user || session),
+      isRecoveryMode,
       error,
       signIn,
       signOut,
@@ -356,8 +398,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updatePassword,
       switchRole,
       clearError,
+      exitRecoveryMode,
     }),
-    [user, session, role, isLoading, error, signIn, signOut, resetPasswordForEmail, updatePassword, switchRole, clearError]
+    [
+      user,
+      session,
+      role,
+      isLoading,
+      isRecoveryMode,
+      error,
+      signIn,
+      signOut,
+      resetPasswordForEmail,
+      updatePassword,
+      switchRole,
+      clearError,
+      exitRecoveryMode,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

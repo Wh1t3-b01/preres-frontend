@@ -514,7 +514,26 @@ async function startServer() {
       appType: 'spa',
     });
     app.use(vite.middlewares);
-    console.log('[Dev] Mounted Vite middlewares on Express server');
+
+    // Explicit SPA HTML fallback for direct routes (like /reset-password, /login)
+    app.use('*', async (req, res, next) => {
+      const url = req.originalUrl;
+      if (url.startsWith('/api/') || url.startsWith('/socket.io/')) {
+        return next();
+      }
+      try {
+        const fs = await import('fs');
+        const indexPath = path.resolve(__dirname, 'index.html');
+        let template = fs.readFileSync(indexPath, 'utf-8');
+        template = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e: any) {
+        if (vite) vite.ssrFixStacktrace(e);
+        next(e);
+      }
+    });
+
+    console.log('[Dev] Mounted Vite middlewares & SPA HTML fallback on Express server');
   } else {
     const distPath = path.resolve(__dirname, 'dist');
     app.use(express.static(distPath));

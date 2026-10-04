@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { RestaurantProvider } from './context/RestaurantContext';
 import { Login } from './components/Auth/Login';
 import { ResetPassword } from './components/Auth/ResetPassword';
@@ -171,23 +171,35 @@ export function DashboardContent() {
   );
 }
 
+function AppRouter() {
+  const { isRecoveryMode } = useAuth();
+
+  if (isRecoveryMode) {
+    return <ResetPassword />;
+  }
+
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route
+        path="/*"
+        element={
+          <ProtectedRoute>
+            <DashboardContent />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <RestaurantProvider>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route
-              path="/*"
-              element={
-                <ProtectedRoute>
-                  <DashboardContent />
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
+          <AppRouter />
         </RestaurantProvider>
       </AuthProvider>
     </BrowserRouter>
