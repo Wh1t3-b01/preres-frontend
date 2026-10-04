@@ -11,6 +11,9 @@ import {
   Phone,
   CheckCircle2,
   AlertCircle,
+  Bell,
+  Sparkles,
+  X,
 } from 'lucide-react';
 import { TableZone } from '../../types';
 
@@ -19,9 +22,7 @@ export const WaitlistView: React.FC = () => {
     waitlist,
     tables,
     reservations,
-    tableGroups,
     selectedDate,
-    selectedTime,
     addToWaitlist,
     updateWaitlistStatus,
     sendWaitlistSMS,
@@ -33,7 +34,7 @@ export const WaitlistView: React.FC = () => {
   const [guestPhone, setGuestPhone] = useState('');
   const [partySize, setPartySize] = useState(2);
   const [estimatedWaitMins, setEstimatedWaitMins] = useState(15);
-  const [preferredZone, setPreferredZone] = useState<TableZone>('main');
+  const [preferredZone, setPreferredZone] = useState<TableZone>('main_a');
   const [notes, setNotes] = useState('');
 
   // Selected table for seating modal
@@ -41,6 +42,7 @@ export const WaitlistView: React.FC = () => {
   const [targetTableId, setTargetTableId] = useState<string>('');
 
   const waitingList = waitlist.filter((w) => w.status !== 'cancelled');
+  const activeWaitingCount = waitlist.filter((w) => w.status === 'waiting').length;
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,54 +80,58 @@ export const WaitlistView: React.FC = () => {
         (r.tableId === t.id || (r.assignedTableIds && r.assignedTableIds.includes(t.id))) &&
         (r.status === 'seated' || r.status === 'confirmed')
     );
-    return !isOccupied;
+    return !isOccupied && !t.isBlocked;
   });
 
   return (
-    <div className="space-y-6 max-w-[1700px] mx-auto pb-12">
+    <div className="space-y-6 max-w-[1780px] mx-auto pb-16 text-slate-100">
+      
       {/* Header */}
-      <div className="bg-white border border-[#1E3A2F]/15 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-[#10141F] border border-[#222A3C] rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-xl font-brand font-bold text-[#1E3A2F]">
-              Lista d'Attesa & Comunicazioni Ospiti
+            <h2 className="text-xl font-brand font-bold text-white">
+              PRERES Waitlist & Coda d'Attesa
             </h2>
-            <span className="text-xs bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full font-mono-num">
-              {waitlist.filter((w) => w.status === 'waiting').length} in attesa
+            <span className="text-xs bg-[#8B31E0]/20 text-[#C084FC] border border-[#8B31E0]/40 font-bold px-2.5 py-0.5 rounded-full font-mono">
+              {activeWaitingCount} in attesa
             </span>
           </div>
-          <p className="text-xs text-[#1E3A2F]/70 mt-1">
-            Gestisci la coda d'attesa all'ingresso e invia SMS/WhatsApp automatici quando il tavolo si libera
+          <p className="text-xs text-slate-400 mt-1">
+            Gestione comitive in attesa all'ingresso, notifiche SMS automatiche e assegnazione rapida del tavolo.
           </p>
         </div>
 
         <button
           onClick={() => setIsAddOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#6B3FA0] hover:bg-[#5A338A] text-white text-xs font-bold rounded-xl transition shadow-xs whitespace-nowrap"
+          className="flex items-center gap-2 px-4 py-2 bg-[#8B31E0] hover:bg-[#7928CA] text-white text-xs font-semibold rounded-xl transition shadow-md whitespace-nowrap cursor-pointer active:scale-95"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-4 h-4 stroke-[2]" />
           <span>Aggiungi Ospite in Coda</span>
         </button>
       </div>
 
       {/* Add to Waitlist Drawer / Modal */}
       {isAddOpen && (
-        <div className="bg-amber-50/80 border-2 border-amber-500/40 rounded-2xl p-5 shadow-sm animate-in fade-in duration-200">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="font-brand font-bold text-sm text-[#1E3A2F]">
-              Nuovo Ingresso in Lista d'Attesa
-            </h4>
+        <div className="bg-[#121622] border border-[#8B31E0]/50 rounded-2xl p-5 shadow-xl animate-in fade-in duration-200">
+          <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#222A3C]">
+            <div className="flex items-center gap-2">
+              <Bell className="w-4 h-4 text-[#C084FC]" />
+              <h4 className="font-brand font-bold text-sm text-white">
+                Nuovo Ingresso in Lista d'Attesa
+              </h4>
+            </div>
             <button
               onClick={() => setIsAddOpen(false)}
-              className="text-xs text-stone-500 hover:text-stone-800 font-semibold"
+              className="text-xs text-slate-400 hover:text-white p-1 rounded-lg hover:bg-[#1E2536] cursor-pointer"
             >
-              Annulla
+              <X className="w-4 h-4 stroke-[1.5]" />
             </button>
           </div>
 
-          <form onSubmit={handleAddSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <form onSubmit={handleAddSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
             <div>
-              <label className="block text-[11px] font-semibold text-[#1E3A2F] mb-1">
+              <label className="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">
                 Nome Ospite *
               </label>
               <input
@@ -134,12 +140,12 @@ export const WaitlistView: React.FC = () => {
                 placeholder="Es. Mario Rossi"
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
-                className="w-full bg-white border border-[#1E3A2F]/20 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#6B3FA0]"
+                className="w-full bg-[#10141F] border border-[#242C3E] rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#8B31E0]"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-[#1E3A2F] mb-1">
+              <label className="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">
                 Cellulare per SMS *
               </label>
               <input
@@ -148,20 +154,20 @@ export const WaitlistView: React.FC = () => {
                 placeholder="+39 340 1234567"
                 value={guestPhone}
                 onChange={(e) => setGuestPhone(e.target.value)}
-                className="w-full bg-white border border-[#1E3A2F]/20 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#6B3FA0]"
+                className="w-full bg-[#10141F] border border-[#242C3E] rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#8B31E0]"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-[#1E3A2F] mb-1">
-                Coperti (Persone)
+              <label className="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                Coperti
               </label>
               <select
                 value={partySize}
                 onChange={(e) => setPartySize(Number(e.target.value))}
-                className="w-full bg-white border border-[#1E3A2F]/20 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-[#6B3FA0]"
+                className="w-full bg-[#10141F] border border-[#242C3E] rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-[#8B31E0] cursor-pointer"
               >
-                {[1, 2, 3, 4, 5, 6, 7, 8, 10].map((n) => (
+                {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12].map((n) => (
                   <option key={n} value={n}>
                     {n} {n === 1 ? 'Persona' : 'Persone'}
                   </option>
@@ -170,8 +176,8 @@ export const WaitlistView: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-[#1E3A2F] mb-1">
-                Attesa Stimata (Minuti)
+              <label className="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                Attesa Stimata
               </label>
               <input
                 type="number"
@@ -180,14 +186,14 @@ export const WaitlistView: React.FC = () => {
                 step="5"
                 value={estimatedWaitMins}
                 onChange={(e) => setEstimatedWaitMins(Number(e.target.value))}
-                className="w-full bg-white border border-[#1E3A2F]/20 rounded-xl px-3 py-2 text-xs font-mono-num font-bold focus:outline-none focus:border-[#6B3FA0]"
+                className="w-full bg-[#10141F] border border-[#242C3E] rounded-xl px-3 py-2 text-xs font-mono font-bold text-amber-300 focus:outline-none focus:border-[#8B31E0]"
               />
             </div>
 
             <div className="flex items-end">
               <button
                 type="submit"
-                className="w-full bg-[#1E3A2F] hover:bg-[#152a22] text-amber-100 font-bold py-2 px-4 rounded-xl text-xs transition shadow-xs"
+                className="w-full bg-[#8B31E0] hover:bg-[#7928CA] text-white font-semibold py-2 px-4 rounded-xl text-xs transition shadow-md cursor-pointer active:scale-95"
               >
                 Salva in Coda
               </button>
@@ -197,9 +203,9 @@ export const WaitlistView: React.FC = () => {
       )}
 
       {/* Waitlist Table */}
-      <div className="bg-white border border-[#1E3A2F]/15 rounded-2xl shadow-xs overflow-hidden">
-        <table className="w-full text-left text-xs text-[#1E3A2F]">
-          <thead className="bg-[#1E3A2F] text-amber-100 uppercase text-[10px] tracking-wider font-semibold">
+      <div className="bg-[#10141F] border border-[#222A3C] rounded-2xl shadow-sm overflow-hidden">
+        <table className="w-full text-left text-xs text-slate-200">
+          <thead className="bg-[#171D2B] text-slate-400 uppercase text-[10px] tracking-wider font-semibold border-b border-[#222A3C]">
             <tr>
               <th className="p-3.5">Ospite</th>
               <th className="p-3.5">Coperti</th>
@@ -210,10 +216,11 @@ export const WaitlistView: React.FC = () => {
               <th className="p-3.5 text-right">Azioni Notifica & Assegnazione</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#1E3A2F]/10">
+          <tbody className="divide-y divide-[#222A3C]/80">
             {waitingList.length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-stone-500 italic">
+                <td colSpan={7} className="p-10 text-center text-slate-500 italic">
+                  <Users className="w-8 h-8 text-slate-600 mx-auto mb-2" />
                   Nessun ospite in attesa in questo momento.
                 </td>
               </tr>
@@ -226,31 +233,31 @@ export const WaitlistView: React.FC = () => {
                 const diffMins = Math.floor((Date.now() - addedDate.getTime()) / 60000);
 
                 return (
-                  <tr key={item.id} className="hover:bg-[#FBF8F2] transition">
+                  <tr key={item.id} className="hover:bg-[#151A27] transition">
                     <td className="p-3.5">
-                      <div className="font-bold text-xs text-[#1E3A2F]">{item.guestName}</div>
-                      {item.notes && <div className="text-[11px] text-stone-500">{item.notes}</div>}
+                      <div className="font-semibold text-xs text-white">{item.guestName}</div>
+                      {item.notes && <div className="text-[11px] text-slate-400 mt-0.5">{item.notes}</div>}
                     </td>
 
-                    <td className="p-3.5 font-bold font-mono-num">{item.partySize} px</td>
+                    <td className="p-3.5 font-bold font-mono text-[#C084FC]">{item.partySize} px</td>
 
-                    <td className="p-3.5 font-mono-num text-stone-600">{item.guestPhone}</td>
+                    <td className="p-3.5 font-mono text-slate-300">{item.guestPhone}</td>
 
-                    <td className="p-3.5 font-mono-num">
+                    <td className="p-3.5 font-mono text-slate-300">
                       {timeStr}{' '}
-                      <span className="text-[10px] text-stone-400">({diffMins} min fa)</span>
+                      <span className="text-[10px] text-slate-500">({diffMins}m fa)</span>
                     </td>
 
-                    <td className="p-3.5 font-mono-num font-semibold">~{item.estimatedWaitMins} min</td>
+                    <td className="p-3.5 font-mono font-semibold text-amber-300">~{item.estimatedWaitMins} min</td>
 
                     <td className="p-3.5">
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                        className={`text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase border ${
                           item.status === 'notified'
-                            ? 'bg-blue-100 text-blue-800'
+                            ? 'bg-blue-950/40 text-blue-300 border-blue-500/40'
                             : item.status === 'seated'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-amber-100 text-amber-900'
+                            ? 'bg-[#059669]/20 text-[#34D399] border-[#059669]/40'
+                            : 'bg-amber-950/40 text-amber-300 border-amber-500/40'
                         }`}
                       >
                         {item.status === 'waiting'
@@ -266,7 +273,7 @@ export const WaitlistView: React.FC = () => {
                         {item.status === 'waiting' && (
                           <button
                             onClick={() => sendWaitlistSMS(item.id)}
-                            className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1 rounded-lg text-xs transition shadow-2xs"
+                            className="flex items-center gap-1 bg-[#8B31E0]/20 hover:bg-[#8B31E0]/40 text-[#C084FC] border border-[#8B31E0]/40 font-semibold px-3 py-1.5 rounded-xl text-xs transition cursor-pointer"
                             title="Invia SMS Tavolo Pronto"
                           >
                             <Send className="w-3 h-3" />
@@ -282,7 +289,7 @@ export const WaitlistView: React.FC = () => {
                                 setTargetTableId(availableTables[0].id);
                               }
                             }}
-                            className="flex items-center gap-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-3 py-1 rounded-lg text-xs transition shadow-2xs"
+                            className="flex items-center gap-1 bg-[#059669] hover:bg-[#047857] text-white font-semibold px-3 py-1.5 rounded-xl text-xs transition shadow-xs cursor-pointer"
                             title="Accomoda subito al tavolo"
                           >
                             <UserCheck className="w-3 h-3" />
@@ -292,7 +299,7 @@ export const WaitlistView: React.FC = () => {
 
                         <button
                           onClick={() => updateWaitlistStatus(item.id, 'cancelled')}
-                          className="p-1.5 text-stone-400 hover:text-rose-600 rounded-lg transition"
+                          className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/20 rounded-lg transition cursor-pointer"
                           title="Rimuovi dalla coda"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -309,28 +316,28 @@ export const WaitlistView: React.FC = () => {
 
       {/* Modal for Seating Waitlist Guest */}
       {seatingWaitlistId && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#FDFBF7] border-2 border-[#1E3A2F]/30 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
-            <h4 className="font-brand font-bold text-lg text-[#1E3A2F]">
-              Accomoda Ospite da Lista d'Attesa
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#121622] border border-[#273248] rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in">
+            <h4 className="font-brand font-bold text-lg text-white">
+              Accomoda Ospite al Tavolo
             </h4>
-            <p className="text-xs text-stone-600">
-              Seleziona il tavolo libero su cui far accomodare l'ospite e avviare il timer.
+            <p className="text-xs text-slate-400">
+              Seleziona il tavolo libero su cui far accomodare l'ospite e avviare il servizio.
             </p>
 
             <div>
-              <label className="block text-xs font-semibold text-[#1E3A2F] mb-1">
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-300 mb-1">
                 Tavoli Liberi Disponibili
               </label>
               {availableTables.length === 0 ? (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700">
+                <div className="p-3 bg-rose-950/30 border border-rose-800/40 rounded-xl text-xs text-rose-300">
                   Nessun tavolo libero in questo momento.
                 </div>
               ) : (
                 <select
                   value={targetTableId}
                   onChange={(e) => setTargetTableId(e.target.value)}
-                  className="w-full bg-white border border-[#1E3A2F]/20 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none"
+                  className="w-full bg-[#10141F] border border-[#242C3E] rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-[#8B31E0] cursor-pointer"
                 >
                   {availableTables.map((t) => (
                     <option key={t.id} value={t.id}>
@@ -341,17 +348,17 @@ export const WaitlistView: React.FC = () => {
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#1E3A2F]/10">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#222A3C]">
               <button
                 onClick={() => setSeatingWaitlistId(null)}
-                className="px-4 py-2 bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold"
+                className="px-4 py-2 bg-[#171D2B] hover:bg-[#222A3C] text-slate-300 rounded-xl text-xs font-semibold border border-[#273248] cursor-pointer"
               >
                 Annulla
               </button>
               <button
                 onClick={handleSeatConfirm}
                 disabled={!targetTableId}
-                className="px-5 py-2 bg-emerald-700 text-white font-bold rounded-xl text-xs disabled:opacity-50"
+                className="px-5 py-2 bg-[#059669] hover:bg-[#047857] text-white font-semibold rounded-xl text-xs disabled:opacity-50 cursor-pointer shadow-md"
               >
                 Conferma e Siedi
               </button>

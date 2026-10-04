@@ -3,7 +3,6 @@ import { useRestaurant } from '../../context/RestaurantContext';
 import {
   Search,
   Calendar,
-  Filter,
   Users,
   CheckCircle2,
   XCircle,
@@ -12,9 +11,6 @@ import {
   Trash2,
   Plus,
   Printer,
-  Tag,
-  Phone,
-  Mail,
   Eraser,
 } from 'lucide-react';
 import { ReservationStatus } from '../../types';
@@ -33,7 +29,6 @@ export const ReservationsList: React.FC<ReservationsListProps> = ({ onOpenBookin
     cancelReservation,
     deleteReservation,
     clearCompletedReservations,
-    tableGroups,
   } = useRestaurant();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -98,163 +93,156 @@ export const ReservationsList: React.FC<ReservationsListProps> = ({ onOpenBookin
   };
 
   return (
-    <div className="space-y-6 max-w-[1700px] mx-auto pb-12">
+    <div className="space-y-5 max-w-[1700px] mx-auto pb-12 text-slate-100">
       {/* Top Controls Header */}
-      <div className="bg-white border border-[#1E3A2F]/15 rounded-2xl p-5 shadow-xs space-y-4">
+      <div className="bg-[#121622] border border-[#222A3C] rounded-2xl p-4 shadow-sm space-y-3.5">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-brand font-bold text-[#1E3A2F]">
+            <h2 className="text-lg font-semibold text-white">
               Registro Prenotazioni del Giorno
             </h2>
-            <p className="text-xs text-[#1E3A2F]/70">
+            <p className="text-xs text-slate-400">
               Gestisci l'accoglienza, i turni tavoli, note di servizio e cancellazione definitiva
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap w-full md:w-auto">
+          <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
             {completedCount > 0 && (
               <button
                 onClick={handleClearCompleted}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 text-xs font-bold rounded-xl transition border border-rose-300 shadow-2xs"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-950/30 hover:bg-rose-900/50 text-rose-300 text-xs font-medium rounded-xl transition border border-rose-800/40 shadow-xs cursor-pointer"
                 title="Elimina definitivamente tutte le prenotazioni chiuse"
               >
-                <Eraser className="w-3.5 h-3.5 text-rose-600" />
-                <span>Elimina Completati ({completedCount})</span>
+                <Eraser className="w-3.5 h-3.5 stroke-[1.5]" />
+                <span>Pulisci Completati ({completedCount})</span>
               </button>
             )}
 
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-[#1E3A2F] text-xs font-semibold rounded-xl transition border border-[#1E3A2F]/10"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#171D2B] hover:bg-[#20273A] text-slate-200 text-xs font-medium rounded-xl transition border border-[#273248] cursor-pointer"
             >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Stampa Foglio</span>
+              <Printer className="w-3.5 h-3.5 stroke-[1.5]" />
+              <span>Stampa</span>
             </button>
 
             <button
               onClick={onOpenBookingModal}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#6B3FA0] hover:bg-[#5A338A] text-white text-xs font-bold rounded-xl transition shadow-xs whitespace-nowrap"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#8B31E0] hover:bg-[#7928CA] text-white text-xs font-semibold rounded-xl transition shadow-sm whitespace-nowrap cursor-pointer"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5 stroke-[2]" />
               <span>Nuova Prenotazione</span>
             </button>
           </div>
         </div>
 
         {/* Filters Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-[#1E3A2F]/10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-2.5 border-t border-[#222A3C]">
           {/* Search Box */}
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-stone-400" />
+            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400 stroke-[1.5]" />
             <input
               type="text"
               placeholder="Cerca ospite, telefono, codice, tavolo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-[#FBF8F2] border border-[#1E3A2F]/20 rounded-xl pl-9 pr-3 py-2 text-xs text-[#1E3A2F] focus:outline-none focus:border-[#6B3FA0]"
+              className="w-full bg-[#10141F] border border-[#242C3E] rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#8B31E0]"
             />
           </div>
 
           {/* Date Picker */}
-          <div className="flex items-center gap-2 bg-[#FBF8F2] border border-[#1E3A2F]/20 rounded-xl px-3 py-1.5">
-            <Calendar className="w-4 h-4 text-stone-500" />
+          <label className="flex items-center gap-2 bg-[#10141F] border border-[#242C3E] rounded-xl px-3 py-1.5 cursor-pointer hover:border-[#8B31E0]/50 transition">
+            <Calendar className="w-3.5 h-3.5 text-[#C084FC] stroke-[1.5] shrink-0" />
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="bg-transparent border-0 text-xs font-semibold text-[#1E3A2F] focus:outline-none w-full cursor-pointer"
+              className="bg-transparent border-0 text-xs font-medium text-white focus:outline-none w-full cursor-pointer font-mono"
             />
-          </div>
+          </label>
 
           {/* Shift Segmented Control */}
-          <div className="flex items-center bg-[#FBF8F2] border border-[#1E3A2F]/20 rounded-xl p-1 text-xs">
+          <div className="flex items-center bg-[#10141F] border border-[#242C3E] rounded-xl p-0.5 text-xs">
             <button
               onClick={() => setShiftFilter('all')}
-              className={`flex-1 py-1 rounded-lg font-medium transition ${
+              className={`flex-1 py-1 rounded-lg font-medium transition cursor-pointer ${
                 shiftFilter === 'all'
-                  ? 'bg-[#1E3A2F] text-amber-100 font-bold shadow-xs'
-                  : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F]'
+                  ? 'bg-[#171D2B] text-white border border-[#273248] shadow-xs'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               Tutti
             </button>
             <button
               onClick={() => setShiftFilter('lunch')}
-              className={`flex-1 py-1 rounded-lg font-medium transition ${
+              className={`flex-1 py-1 rounded-lg font-medium transition cursor-pointer ${
                 shiftFilter === 'lunch'
-                  ? 'bg-[#1E3A2F] text-amber-100 font-bold shadow-xs'
-                  : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F]'
+                  ? 'bg-[#171D2B] text-white border border-[#273248] shadow-xs'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               Pranzo
             </button>
             <button
               onClick={() => setShiftFilter('dinner')}
-              className={`flex-1 py-1 rounded-lg font-medium transition ${
+              className={`flex-1 py-1 rounded-lg font-medium transition cursor-pointer ${
                 shiftFilter === 'dinner'
-                  ? 'bg-[#1E3A2F] text-amber-100 font-bold shadow-xs'
-                  : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F]'
+                  ? 'bg-[#171D2B] text-white border border-[#273248] shadow-xs'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               Cena
             </button>
           </div>
 
-          {/* Status Filter Dropdown */}
+          {/* Status Dropdown */}
           <div className="relative">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="w-full bg-[#FBF8F2] border border-[#1E3A2F]/20 rounded-xl px-3 py-2 text-xs text-[#1E3A2F] font-semibold focus:outline-none focus:border-[#6B3FA0]"
+              className="w-full bg-[#10141F] border border-[#242C3E] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#8B31E0] cursor-pointer"
             >
-              <option value="all">Tutti gli Stati</option>
-              <option value="confirmed">Confermati (In arrivo)</option>
+              <option value="all">Tutti gli stati ({filteredReservations.length})</option>
+              <option value="confirmed">In Arrivo (Confermati)</option>
               <option value="seated">Seduti in Sala</option>
-              <option value="completed">Completati (Terminati)</option>
+              <option value="completed">Completati</option>
               <option value="cancelled">Annullati</option>
             </select>
           </div>
         </div>
 
-        {/* Quick Summary Strip */}
-        <div className="flex items-center justify-between text-xs text-stone-600 pt-2 border-t border-[#1E3A2F]/10">
-          <div className="flex items-center gap-4 flex-wrap">
-            <span>
-              Prenotazioni filtrate: <strong>{filteredReservations.length}</strong>
-            </span>
+        {/* Quick KPI Count pill bar */}
+        <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-[#222A3C] flex-wrap gap-2 font-mono">
+          <div className="flex items-center gap-3">
+            <span>Totale: <strong className="text-white">{filteredReservations.length} prenotazioni</strong></span>
             <span>·</span>
-            <span>
-              Coperti totali: <strong>{totalCovers} px</strong>
-            </span>
+            <span>Coperti: <strong className="text-white">{totalCovers} pax</strong></span>
             <span>·</span>
-            <span>
-              Seduti ora: <strong className="text-emerald-700">{seatedCovers} px</strong>
-            </span>
+            <span className="text-[#34D399]">Seduti: <strong>{seatedCovers} pax</strong></span>
           </div>
-          <span className="text-[11px] text-stone-400 font-mono-num">Data: {selectedDate}</span>
         </div>
       </div>
 
-      {/* Reservations Table */}
-      <div className="bg-white border border-[#1E3A2F]/15 rounded-2xl shadow-xs overflow-hidden">
+      {/* Main Table Content */}
+      <div className="bg-[#121622] border border-[#222A3C] rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-[#1E3A2F]">
-            <thead className="bg-[#1E3A2F] text-amber-100 uppercase text-[10px] tracking-wider font-semibold">
-              <tr>
-                <th className="p-3.5">Orario</th>
-                <th className="p-3.5">Ospite</th>
-                <th className="p-3.5">Coperti</th>
-                <th className="p-3.5">Tavolo</th>
-                <th className="p-3.5">Note & Intolleranze</th>
-                <th className="p-3.5">Codice</th>
-                <th className="p-3.5">Stato</th>
-                <th className="p-3.5 text-right">Azioni</th>
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-[#222A3C] bg-[#161C2A] text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                <th className="p-3">Orario</th>
+                <th className="p-3">Ospite</th>
+                <th className="p-3">Coperti</th>
+                <th className="p-3">Tavolo</th>
+                <th className="p-3">Note & Intolleranze</th>
+                <th className="p-3">Codice</th>
+                <th className="p-3">Stato</th>
+                <th className="p-3 text-right">Azioni</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1E3A2F]/10">
+            <tbody className="divide-y divide-[#202738]">
               {filteredReservations.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-stone-500 italic">
+                  <td colSpan={8} className="p-8 text-center text-slate-500 italic">
                     Nessuna prenotazione trovata con i filtri selezionati.
                   </td>
                 </tr>
@@ -265,22 +253,26 @@ export const ReservationsList: React.FC<ReservationsListProps> = ({ onOpenBookin
                   return (
                     <tr
                       key={r.id}
-                      className="hover:bg-[#FBF8F2] transition-colors duration-100"
+                      className="hover:bg-[#161C2A] transition-colors duration-100"
                     >
                       {/* Time */}
-                      <td className="p-3.5 font-mono-num font-bold text-sm text-[#6B3FA0]">
+                      <td className="p-3 font-mono font-bold text-xs text-[#C084FC]">
                         {r.startTime}
-                        <span className="block text-[10px] font-normal text-stone-400">
+                        <span className="block text-[10px] font-normal text-slate-500 font-sans">
                           {r.endTime} ({r.durationMins}m)
                         </span>
                       </td>
 
                       {/* Guest */}
-                      <td className="p-3.5">
-                        <div className="font-bold text-xs text-[#1E3A2F]">{r.guestName}</div>
+                      <td className="p-3">
+                        <div className="font-semibold text-xs text-white flex items-center gap-1.5">
+                          <span>{r.guestName}</span>
+                          {r.vipTier === 'top_spender' && <span className="text-[9px] text-amber-400">💎</span>}
+                          {r.vipTier === 'vip' && <span className="text-[9px] text-[#C084FC]">⭐</span>}
+                        </div>
                         {(r.guestPhone || r.guestEmail) && (
-                          <div className="text-[10px] text-stone-500 flex items-center gap-2 mt-0.5">
-                            {r.guestPhone && <span>{r.guestPhone}</span>}
+                          <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
+                            {r.guestPhone && <span className="font-mono">{r.guestPhone}</span>}
                             {r.guestEmail && <span>{r.guestEmail}</span>}
                           </div>
                         )}
@@ -289,7 +281,7 @@ export const ReservationsList: React.FC<ReservationsListProps> = ({ onOpenBookin
                             {r.tags.map((tag) => (
                               <span
                                 key={tag}
-                                className="text-[9px] font-medium bg-[#1E3A2F]/5 text-[#1E3A2F] px-1.5 py-0.2 rounded border border-[#1E3A2F]/10"
+                                className="text-[8px] font-medium bg-[#171D2B] text-slate-300 px-1.5 py-0.2 rounded border border-[#273248]"
                               >
                                 {tag}
                               </span>
@@ -299,15 +291,15 @@ export const ReservationsList: React.FC<ReservationsListProps> = ({ onOpenBookin
                       </td>
 
                       {/* Party Size */}
-                      <td className="p-3.5 font-bold font-mono-num text-xs">
+                      <td className="p-3 font-mono font-bold text-xs text-white">
                         {r.partySize} px
                       </td>
 
                       {/* Table */}
-                      <td className="p-3.5">
-                        <div className="font-mono-num font-bold text-xs text-[#1E3A2F]">
+                      <td className="p-3">
+                        <div className="font-mono font-semibold text-xs text-[#34D399]">
                           {isMerged ? (
-                            <span className="text-amber-800 bg-amber-100 px-2 py-0.5 rounded text-[11px] font-semibold">
+                            <span className="text-[#C084FC] bg-[#8B31E0]/20 px-2 py-0.5 rounded text-[10px] font-semibold border border-[#8B31E0]/30">
                               Uniti: {r.assignedTableIds.join('+')}
                             </span>
                           ) : (
@@ -317,48 +309,54 @@ export const ReservationsList: React.FC<ReservationsListProps> = ({ onOpenBookin
                       </td>
 
                       {/* Notes */}
-                      <td className="p-3.5 max-w-xs">
+                      <td className="p-3 max-w-xs">
                         {r.notes ? (
-                          <span className="text-stone-700 text-[11px] line-clamp-2">
+                          <span className="text-slate-300 text-[11px] line-clamp-2">
                             {r.notes}
                           </span>
                         ) : (
-                          <span className="text-stone-400 italic text-[10px]">—</span>
+                          <span className="text-slate-600 italic text-[10px]">—</span>
                         )}
                       </td>
 
                       {/* Code */}
-                      <td className="p-3.5 font-mono text-[11px] font-semibold text-stone-600">
+                      <td className="p-3 font-mono text-[10px] text-slate-400">
                         {r.bookingCode}
                       </td>
 
                       {/* Status */}
-                      <td className="p-3.5">
+                      <td className="p-3">
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase ${
+                          className={`text-[9px] font-semibold px-2 py-0.5 rounded-full uppercase border ${
                             r.status === 'seated'
-                              ? 'bg-emerald-100 text-emerald-800'
+                              ? 'bg-[#059669]/20 text-[#34D399] border-[#059669]/40'
                               : r.status === 'confirmed'
-                              ? 'bg-purple-100 text-purple-800'
+                              ? 'bg-[#8B31E0]/20 text-[#C084FC] border-[#8B31E0]/40'
                               : r.status === 'completed'
-                              ? 'bg-stone-100 text-stone-600'
-                              : 'bg-rose-100 text-rose-800'
+                              ? 'bg-slate-800 text-slate-400 border-slate-700'
+                              : 'bg-rose-950/30 text-rose-400 border-rose-800/40'
                           }`}
                         >
-                          {r.status === 'completed' ? 'Completato' : r.status === 'seated' ? 'Seduto' : r.status === 'confirmed' ? 'Confermato' : 'Annullato'}
+                          {r.status === 'seated'
+                            ? 'Seduto'
+                            : r.status === 'confirmed'
+                            ? 'In Arrivo'
+                            : r.status === 'completed'
+                            ? 'Completato'
+                            : 'Annullato'}
                         </span>
                       </td>
 
-                      {/* Quick Actions */}
-                      <td className="p-3.5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      {/* Actions */}
+                      <td className="p-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
                           {r.status === 'confirmed' && (
                             <button
                               onClick={() => seatReservation(r.id)}
-                              className="px-2.5 py-1 bg-[#6B3FA0] hover:bg-[#5A338A] text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1 shadow-xs"
+                              className="px-2.5 py-1 bg-[#059669] hover:bg-[#047857] text-white text-[10px] font-semibold rounded-lg transition shadow-2xs flex items-center gap-1 cursor-pointer"
                               title="Fai sedere gli ospiti"
                             >
-                              <UserCheck className="w-3 h-3" />
+                              <UserCheck className="w-3 h-3 stroke-[1.5]" />
                               <span>Siedi</span>
                             </button>
                           )}
@@ -366,44 +364,30 @@ export const ReservationsList: React.FC<ReservationsListProps> = ({ onOpenBookin
                           {r.status === 'seated' && (
                             <button
                               onClick={() => completeReservation(r.id)}
-                              className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1 shadow-xs"
-                              title="Completa e libera tavolo"
+                              className="px-2.5 py-1 bg-[#059669] hover:bg-[#047857] text-white text-[10px] font-semibold rounded-lg transition shadow-2xs flex items-center gap-1 cursor-pointer"
+                              title="Completa e libera il tavolo"
                             >
-                              <CheckCircle2 className="w-3 h-3" />
-                              <span>Libera</span>
+                              <CheckCircle2 className="w-3 h-3 stroke-[1.5]" />
+                              <span>Completa</span>
                             </button>
                           )}
 
                           {r.status !== 'cancelled' && r.status !== 'completed' && (
                             <button
-                              onClick={() => {
-                                if (confirm(`Vuoi annullare la prenotazione ${r.bookingCode}?`)) {
-                                  cancelReservation(r.id);
-                                }
-                              }}
-                              className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                              onClick={() => cancelReservation(r.id)}
+                              className="p-1 hover:bg-white/5 text-slate-400 hover:text-amber-400 rounded-lg transition cursor-pointer"
                               title="Annulla prenotazione"
                             >
-                              <XCircle className="w-4 h-4" />
+                              <XCircle className="w-3.5 h-3.5 stroke-[1.5]" />
                             </button>
                           )}
 
-                          {/* Permanent Delete Button for any row (especially completed ones) */}
                           <button
-                            onClick={() => {
-                              deleteReservation(r.bookingCode || r.id);
-                            }}
-                            className={`p-1.5 rounded-lg transition flex items-center gap-1 ${
-                              r.status === 'completed' || r.status === 'cancelled'
-                                ? 'text-rose-600 hover:text-white hover:bg-rose-600 bg-rose-50 border border-rose-200 text-[10px] font-bold px-2'
-                                : 'text-stone-400 hover:text-rose-700 hover:bg-rose-50'
-                            }`}
-                            title="Elimina definitivamente dal database"
+                            onClick={() => deleteReservation(r.bookingCode || r.id)}
+                            className="p-1 hover:bg-rose-950/40 text-slate-500 hover:text-rose-400 rounded-lg transition cursor-pointer"
+                            title="Elimina definitivamente"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            {(r.status === 'completed' || r.status === 'cancelled') && (
-                              <span>Elimina</span>
-                            )}
+                            <Trash2 className="w-3.5 h-3.5 stroke-[1.5]" />
                           </button>
                         </div>
                       </td>

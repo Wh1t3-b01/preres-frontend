@@ -35,6 +35,91 @@ export const DINNER_SLOTS = [
 
 export const ALL_BOOKING_SLOTS = [...LUNCH_SLOTS, ...DINNER_SLOTS];
 
+export interface RestaurantServiceStatus {
+  isOpen: boolean;
+  isWeeklyClosedDay: boolean;
+  currentService: 'lunch' | 'dinner' | 'prep' | 'closed';
+  statusLabel: string;
+  subLabel: string;
+  badgeType: 'open' | 'prep' | 'closed';
+}
+
+/**
+ * Computes live operational status for Sotto Sotto Bar & Grill:
+ * - Weekly Closed: Monday (1) & Tuesday (2)
+ * - Open Days: Wednesday through Sunday
+ * - Lunch: 12:00 – 15:00
+ * - Afternoon Prep / Break: 15:00 – 17:00
+ * - Dinner: 17:00 – 23:00
+ * - Night Closed: 23:00 – 12:00
+ */
+export function getRestaurantServiceStatus(date: Date = new Date()): RestaurantServiceStatus {
+  const day = date.getDay(); // 0 = Sunday, 1 = Monday, 2 = Tuesday, etc.
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const currentMins = hours * 60 + minutes;
+
+  // Monday (1) or Tuesday (2) = Weekly Rest Days
+  if (day === 1 || day === 2) {
+    const dayName = day === 1 ? 'Lunedì' : 'Martedì';
+    return {
+      isOpen: false,
+      isWeeklyClosedDay: true,
+      currentService: 'closed',
+      statusLabel: `Chiuso · Riposo Settimanale (${dayName})`,
+      subLabel: 'Riapertura Mercoledì ore 12:00',
+      badgeType: 'closed',
+    };
+  }
+
+  // Open Days (Wednesday to Sunday)
+  // 1. Lunch Shift: 12:00 - 15:00
+  if (currentMins >= 12 * 60 && currentMins < 15 * 60) {
+    return {
+      isOpen: true,
+      isWeeklyClosedDay: false,
+      currentService: 'lunch',
+      statusLabel: 'Aperto · Servizio Pranzo',
+      subLabel: 'Turno attivo fino alle 15:00',
+      badgeType: 'open',
+    };
+  }
+
+  // 2. Afternoon Break / Kitchen Prep: 15:00 - 17:00
+  if (currentMins >= 15 * 60 && currentMins < 17 * 60) {
+    return {
+      isOpen: false,
+      isWeeklyClosedDay: false,
+      currentService: 'prep',
+      statusLabel: 'Pausa Pomeridiana · Prep Linea',
+      subLabel: 'Apertura servizio Cena alle 17:00',
+      badgeType: 'prep',
+    };
+  }
+
+  // 3. Dinner Shift: 17:00 - 23:00
+  if (currentMins >= 17 * 60 && currentMins < 23 * 60) {
+    return {
+      isOpen: true,
+      isWeeklyClosedDay: false,
+      currentService: 'dinner',
+      statusLabel: 'Aperto · Servizio Cena',
+      subLabel: 'Turno serale attivo fino alle 23:00',
+      badgeType: 'open',
+    };
+  }
+
+  // 4. Night Closed: 23:00 - 12:00
+  return {
+    isOpen: false,
+    isWeeklyClosedDay: false,
+    currentService: 'closed',
+    statusLabel: 'Chiuso · Fuori Orario di Servizio',
+    subLabel: 'Apertura Pranzo alle 12:00',
+    badgeType: 'closed',
+  };
+}
+
 export interface SlotValidationResult {
   isValid: boolean;
   reason?: string;
@@ -144,6 +229,8 @@ export function isTableFreeDuringSlot(
   reservations: Reservation[],
   excludeReservationId?: string
 ): boolean {
+  const equivalentIds = tableId === '21' || tableId === '21_b' ? ['21', '21_b'] : [tableId];
+
   const activeReservations = reservations.filter(
     (r) =>
       r.reservationDate === date &&
@@ -154,8 +241,8 @@ export function isTableFreeDuringSlot(
 
   for (const res of activeReservations) {
     const isTargeted =
-      res.tableId === tableId ||
-      (res.assignedTableIds && res.assignedTableIds.includes(tableId));
+      equivalentIds.includes(res.tableId) ||
+      (res.assignedTableIds && res.assignedTableIds.some((id) => equivalentIds.includes(id)));
 
     if (isTargeted) {
       if (isTimeOverlap(startTime, endTime, res.startTime, res.endTime)) {
@@ -374,10 +461,13 @@ export function computeTableInstantStatus(
     (r) => r.reservationDate === date && r.status !== 'cancelled'
   );
 
+  const equivalentIds = tableId === '21' || tableId === '21_b' ? ['21', '21_b'] : [tableId];
+
   // Find active seated or currently running reservation
   const currentActive = dateReservations.find((r) => {
     const isTargeted =
-      r.tableId === tableId || (r.assignedTableIds && r.assignedTableIds.includes(tableId));
+      equivalentIds.includes(r.tableId) ||
+      (r.assignedTableIds && r.assignedTableIds.some((id) => equivalentIds.includes(id)));
     if (!isTargeted) return false;
 
     if (r.status === 'seated') return true;

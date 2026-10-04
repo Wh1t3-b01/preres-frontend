@@ -54,10 +54,15 @@ export const TableDetailModal: React.FC<TableDetailModalProps> = ({
     unmergeTables,
     cancelReservation,
     deleteReservation,
+    toggleTableBlock,
+    transferTable,
+    setTableCourseStage,
   } = useRestaurant();
 
   const [showFullSchedule, setShowFullSchedule] = useState(false);
   const [isConfirmingDeleteTable, setIsConfirmingDeleteTable] = useState(false);
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [targetTransferTableId, setTargetTransferTableId] = useState('');
 
   if (!tableId) return null;
 
@@ -96,43 +101,46 @@ export const TableDetailModal: React.FC<TableDetailModalProps> = ({
   const totalTurns = tableDayReservations.length;
   const totalDailyCovers = tableDayReservations.reduce((sum, r) => sum + r.partySize, 0);
 
-  // Handler to adjust reservation covers
-  const handleSetReservationCovers = (newPartySize: number) => {
+  const handleSetReservationCovers = (newCovers: number) => {
     if (!currentRes) return;
-    const clamped = Math.max(1, Math.min(30, newPartySize));
-    updateReservation(currentRes.id, { partySize: clamped });
+    const clampedCovers = Math.max(1, Math.min(20, newCovers));
+    updateReservation(currentRes.id, {
+      partySize: clampedCovers,
+    });
+  };
 
-    if (clamped > effectiveCapacity) {
-      updateTableCapacity(table.id, clamped);
-    }
+  const handleUpdateNotes = (notes: string) => {
+    if (!currentRes) return;
+    updateReservation(currentRes.id, { notes });
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-y-auto">
-      <div className="bg-[#FDFBF7] border-2 border-[#1E3A2F]/30 rounded-3xl p-5 md:p-6 max-w-lg w-full shadow-2xl space-y-3.5 animate-in fade-in zoom-in-95 duration-200 my-auto">
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-[#121622]/95 border border-[#273248] rounded-3xl p-5 sm:p-6 max-w-lg w-full shadow-2xl space-y-4 my-auto text-slate-100 animate-in fade-in zoom-in-95 duration-150">
+        
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#1E3A2F]/15 pb-3">
+        <div className="flex items-center justify-between pb-3 border-b border-[#222A3C]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#1E3A2F] text-amber-100 flex items-center justify-center font-bold text-base font-brand shadow-xs">
+            <div className="w-10 h-10 rounded-2xl bg-[#171D2B] border border-[#273248] text-[#C084FC] flex items-center justify-center font-brand font-bold text-base shadow-xs">
               {table.tableNumber}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-brand font-bold text-[#1E3A2F]">
-                  Tavolo {table.tableNumber}
+                <h3 className="text-base font-semibold text-white">
+                  {activeGroup ? activeGroup.combinedName : table.name || `Tavolo ${table.tableNumber}`}
                 </h3>
                 {activeGroup && (
-                  <span className="text-[10px] font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-semibold bg-[#8B31E0]/20 text-[#C084FC] border border-[#8B31E0]/30 px-2 py-0.2 rounded-full">
                     {activeGroup.combinedName}
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-xs text-stone-500 flex-wrap">
+              <div className="flex items-center gap-2 text-xs text-slate-400 flex-wrap mt-0.5">
                 <span>Zona {table.zone.toUpperCase()}</span>
                 <span>·</span>
-                <span>Capienza: <strong className="text-[#1E3A2F] font-mono-num">{effectiveCapacity} px</strong></span>
+                <span>Capienza: <strong className="text-white font-mono">{effectiveCapacity} px</strong></span>
                 <span>·</span>
-                <span className="text-[#6B3FA0] font-semibold">
+                <span className="text-[#34D399]">
                   Oggi: {totalTurns} {totalTurns === 1 ? 'giro' : 'giri'} ({totalDailyCovers} px)
                 </span>
               </div>
@@ -140,213 +148,240 @@ export const TableDetailModal: React.FC<TableDetailModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="text-stone-400 hover:text-[#1E3A2F] p-1.5 rounded-xl hover:bg-[#1E3A2F]/5 transition"
+            className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/5 transition cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 stroke-[1.5]" />
           </button>
         </div>
 
         {/* Current Reservation Details Card */}
         {currentRes ? (
-          <div className="bg-white border-2 border-[#1E3A2F]/20 rounded-2xl p-4 shadow-xs space-y-3">
+          <div className="bg-[#171D2B] border border-[#273248] rounded-2xl p-4 shadow-sm space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#1E3A2F] flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-[#6B3FA0]" />
-                <span>Prenotazione In Corso / In Arrivo</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-[#C084FC] stroke-[1.5]" />
+                <span>Ospite / Prenotazione Attiva</span>
               </span>
               <span
-                className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase ${
+                className={`text-[9px] font-semibold px-2 py-0.5 rounded-full uppercase border ${
                   currentRes.status === 'seated'
-                    ? 'bg-emerald-100 text-emerald-800'
+                    ? 'bg-[#059669]/20 text-[#34D399] border-[#059669]/40'
                     : currentRes.status === 'confirmed'
-                    ? 'bg-purple-100 text-purple-800'
-                    : 'bg-stone-100 text-stone-700'
+                    ? 'bg-[#8B31E0]/20 text-[#C084FC] border-[#8B31E0]/40'
+                    : 'bg-slate-800 text-slate-300 border-slate-700'
                 }`}
               >
-                {currentRes.status === 'seated' ? 'Seduto in Sala' : currentRes.status === 'confirmed' ? 'In Arrivo / Confermato' : currentRes.status}
+                {currentRes.status === 'seated' ? 'Seduto in Sala' : currentRes.status === 'confirmed' ? 'In Arrivo' : currentRes.status}
               </span>
             </div>
 
             {/* Guest Details Grid */}
-            <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-stone-100">
+            <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-[#222A3C]">
               <div>
-                <span className="text-[10px] text-stone-400 block leading-none">Ospite</span>
-                <strong className="text-sm font-brand text-[#1E3A2F]">{currentRes.guestName}</strong>
+                <span className="text-[10px] text-slate-400 block leading-none">Ospite</span>
+                <strong className="text-sm text-white font-medium">{currentRes.guestName}</strong>
               </div>
               <div>
-                <span className="text-[10px] text-stone-400 block leading-none">Turno Orario</span>
-                <span className="font-mono-num font-bold text-[#6B3FA0]">
+                <span className="text-[10px] text-slate-400 block leading-none">Orario</span>
+                <span className="font-mono font-bold text-[#C084FC]">
                   {currentRes.startTime} – {currentRes.endTime} ({currentRes.durationMins}m)
                 </span>
               </div>
             </div>
 
-            {/* DIRECT COVERS MODIFIER FOR ACTIVE RESERVATION */}
-            <div className="bg-[#FBF8F2] border-2 border-[#6B3FA0]/30 rounded-xl p-2.5 space-y-1.5 shadow-2xs">
+            {/* DIRECT COVERS MODIFIER */}
+            <div className="bg-[#10141F] border border-[#242C3E] rounded-xl p-2.5 space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#1E3A2F] flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5 text-[#6B3FA0]" />
-                  <span>Coperti Effettivi Prenotazione</span>
+                <span className="text-xs font-medium text-slate-200 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-[#C084FC] stroke-[1.5]" />
+                  <span>Coperti Effettivi</span>
                 </span>
-                <span className="text-xs font-mono-num font-extrabold text-[#6B3FA0] bg-white px-2 py-0.5 rounded-md border border-[#6B3FA0]/30 shadow-2xs">
+                <span className="text-xs font-mono font-bold text-[#C084FC] bg-[#171D2B] px-2 py-0.5 rounded border border-[#273248]">
                   {currentRes.partySize} persone
                 </span>
               </div>
 
               <div className="flex items-center justify-between gap-2 pt-0.5">
                 {/* Stepper +/- */}
-                <div className="flex items-center bg-white border border-[#1E3A2F]/20 rounded-xl p-0.5 shadow-2xs">
+                <div className="flex items-center bg-[#171D2B] border border-[#273248] rounded-xl p-0.5">
                   <button
                     type="button"
                     onClick={() => handleSetReservationCovers(currentRes.partySize - 1)}
-                    className="w-7 h-7 rounded-lg hover:bg-stone-100 flex items-center justify-center text-stone-700 active:scale-95 transition"
-                    title="Riduci di 1 coperto"
+                    className="w-7 h-7 rounded-lg hover:bg-white/5 flex items-center justify-center text-slate-300 active:scale-95 transition cursor-pointer"
                   >
-                    <Minus className="w-3.5 h-3.5" />
+                    <Minus className="w-3.5 h-3.5 stroke-[1.5]" />
                   </button>
-                  <span className="px-3 text-xs font-bold font-mono-num text-[#1E3A2F]">
+                  <span className="px-3 text-xs font-bold font-mono text-white">
                     {currentRes.partySize}
                   </span>
                   <button
                     type="button"
                     onClick={() => handleSetReservationCovers(currentRes.partySize + 1)}
-                    className="w-7 h-7 rounded-lg hover:bg-stone-100 flex items-center justify-center text-stone-700 active:scale-95 transition"
-                    title="Aggiungi 1 coperto (es. ospite in più)"
+                    className="w-7 h-7 rounded-lg hover:bg-white/5 flex items-center justify-center text-slate-300 active:scale-95 transition cursor-pointer"
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    <Plus className="w-3.5 h-3.5 stroke-[1.5]" />
                   </button>
                 </div>
 
-                {/* Quick Party Size Presets */}
+                {/* Quick Presets */}
                 <div className="flex items-center gap-1 flex-wrap">
                   {[1, 2, 3, 4, 5, 6, 8].map((num) => (
                     <button
                       key={num}
                       type="button"
                       onClick={() => handleSetReservationCovers(num)}
-                      className={`px-2 py-1 rounded-lg text-xs font-mono-num font-bold transition ${
+                      className={`w-6 h-6 rounded-lg text-xs font-mono font-medium transition cursor-pointer ${
                         currentRes.partySize === num
-                          ? 'bg-[#6B3FA0] text-white shadow-2xs'
-                          : 'bg-white border border-[#1E3A2F]/15 text-[#1E3A2F] hover:bg-white/80'
+                          ? 'bg-[#8B31E0] text-white border border-[#A855F7]/40 shadow-xs'
+                          : 'bg-[#171D2B] text-slate-400 hover:text-white border border-[#242C3E]'
                       }`}
                     >
-                      {num}p
+                      {num}
                     </button>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* Phone & Email if available */}
-            {(currentRes.guestPhone || currentRes.guestEmail) && (
-              <div className="bg-[#FBF8F2] p-2 rounded-xl border border-[#1E3A2F]/10 flex flex-wrap items-center gap-3 text-xs text-[#1E3A2F]">
-                {currentRes.guestPhone && (
-                  <a
-                    href={`tel:${currentRes.guestPhone}`}
-                    className="flex items-center gap-1 hover:text-[#6B3FA0] font-mono-num"
-                  >
-                    <Phone className="w-3.5 h-3.5 text-stone-500" />
-                    <span>{currentRes.guestPhone}</span>
-                  </a>
-                )}
-                {currentRes.guestEmail && (
-                  <a
-                    href={`mailto:${currentRes.guestEmail}`}
-                    className="flex items-center gap-1 hover:text-[#6B3FA0]"
-                  >
-                    <Mail className="w-3.5 h-3.5 text-stone-500" />
-                    <span>{currentRes.guestEmail}</span>
-                  </a>
-                )}
-                <span className="text-[10px] text-stone-400 ml-auto font-mono">
-                  Cod: {currentRes.bookingCode}
-                </span>
-              </div>
-            )}
-
-            {/* Tags / Dietary Requirements */}
-            {currentRes.tags && currentRes.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 pt-0.5">
-                {currentRes.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="text-[10px] font-bold bg-[#1E3A2F] text-amber-100 px-2 py-0.5 rounded-lg shadow-2xs"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Notes */}
-            {currentRes.notes && (
-              <div className="bg-amber-50/80 border border-amber-300/80 rounded-xl p-2 text-xs text-amber-950">
-                <span className="font-bold block text-[10px] uppercase text-amber-900 mb-0.5">
-                  Note di Servizio:
-                </span>
-                <p className="leading-snug">{currentRes.notes}</p>
-              </div>
-            )}
-
-            {/* Turn Timer for seated guests */}
+            {/* LIVE TIMER / SERVICE DURATION */}
             {currentRes.status === 'seated' && (
-              <div className="bg-[#FBF8F2] p-2.5 rounded-xl border border-[#1E3A2F]/15 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-stone-600 flex items-center gap-1.5 font-medium">
-                    <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                    Permanenza al tavolo:
-                  </span>
-                  <span className="font-mono-num font-bold text-[#1E3A2F]">
-                    {liveStatus.elapsedMinutes}m trascorsi / {settings.maxTurnMins}m max
-                  </span>
-                </div>
-
-                <div className="w-full h-1.5 bg-black/10 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full transition-all ${
-                      liveStatus.status === 'expired'
-                        ? 'bg-rose-600'
-                        : liveStatus.status === 'warning'
-                        ? 'bg-amber-500'
-                        : 'bg-emerald-600'
-                    }`}
-                    style={{ width: `${Math.min(100, liveStatus.occupancyPercent || 0)}%` }}
-                  />
-                </div>
-
-                {/* Quick Extension Buttons */}
-                <div className="flex items-center justify-between gap-2 pt-0.5">
-                  <span className="text-[10px] text-stone-500">Proroga servizio:</span>
-                  <div className="flex gap-1.5">
-                    <button
-                      onClick={() => extendTableTime(table.id, 15)}
-                      className="px-2 py-0.5 bg-white border border-[#1E3A2F]/20 text-[10px] font-bold text-[#1E3A2F] rounded-lg hover:bg-[#1E3A2F]/5 transition shadow-2xs"
-                    >
-                      +15 min
-                    </button>
-                    <button
-                      onClick={() => extendTableTime(table.id, 30)}
-                      className="px-2 py-0.5 bg-white border border-[#1E3A2F]/20 text-[10px] font-bold text-[#1E3A2F] rounded-lg hover:bg-[#1E3A2F]/5 transition shadow-2xs"
-                    >
-                      +30 min
-                    </button>
+              <div className="bg-[#10141F] border border-[#242C3E] rounded-xl p-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-[#34D399] stroke-[1.5]" />
+                  <div>
+                    <span className="text-[10px] text-slate-400 block leading-none">Tempo al Tavolo</span>
+                    <span className="text-xs font-mono font-bold text-[#34D399]">
+                      {liveStatus.elapsedMinutes || 0} minuti trascorsi
+                    </span>
                   </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => extendTableTime(table.id, 15)}
+                    className="px-2.5 py-1 bg-[#171D2B] hover:bg-[#222A3C] border border-[#273248] text-[10px] font-semibold text-slate-200 rounded-lg transition cursor-pointer"
+                  >
+                    +15m
+                  </button>
+                  <button
+                    onClick={() => extendTableTime(table.id, 30)}
+                    className="px-2.5 py-1 bg-[#171D2B] hover:bg-[#222A3C] border border-[#273248] text-[10px] font-semibold text-slate-200 rounded-lg transition cursor-pointer"
+                  >
+                    +30m
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* PRERES Course Progression */}
+            {currentRes.status === 'seated' && (
+              <div className="bg-[#10141F] border border-[#242C3E] rounded-xl p-2.5 space-y-1.5">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                  <span>Avanzamento Portate</span>
+                  <span className="text-[#C084FC] font-semibold capitalize">{table.courseStage || 'Seduto'}</span>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 text-[10px] font-medium">
+                  <button
+                    type="button"
+                    onClick={() => setTableCourseStage(table.id, 'drinks')}
+                    className={`py-1 rounded-lg border transition cursor-pointer ${table.courseStage === 'drinks' ? 'bg-[#8B31E0] text-white border-[#8B31E0]' : 'bg-[#171D2B] text-slate-300 border-[#242C3E] hover:bg-[#20273A]'}`}
+                  >
+                    🍸 Drink
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTableCourseStage(table.id, 'appetizers')}
+                    className={`py-1 rounded-lg border transition cursor-pointer ${table.courseStage === 'appetizers' ? 'bg-[#8B31E0] text-white border-[#8B31E0]' : 'bg-[#171D2B] text-slate-300 border-[#242C3E] hover:bg-[#20273A]'}`}
+                  >
+                    🥗 Antipasti
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTableCourseStage(table.id, 'mains')}
+                    className={`py-1 rounded-lg border transition cursor-pointer ${table.courseStage === 'mains' ? 'bg-[#8B31E0] text-white border-[#8B31E0]' : 'bg-[#171D2B] text-slate-300 border-[#242C3E] hover:bg-[#20273A]'}`}
+                  >
+                    🥩 Portate
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTableCourseStage(table.id, 'dessert')}
+                    className={`py-1 rounded-lg border transition cursor-pointer ${table.courseStage === 'dessert' ? 'bg-[#8B31E0] text-white border-[#8B31E0]' : 'bg-[#171D2B] text-slate-300 border-[#242C3E] hover:bg-[#20273A]'}`}
+                  >
+                    🍰 Dolce
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTableCourseStage(table.id, 'bill_requested')}
+                    className={`py-1 rounded-lg border transition cursor-pointer ${table.courseStage === 'bill_requested' ? 'bg-amber-500 text-slate-950 font-bold border-amber-400' : 'bg-[#171D2B] text-slate-300 border-[#242C3E] hover:bg-[#20273A]'}`}
+                  >
+                    💳 Conto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTableCourseStage(table.id, 'clearing')}
+                    className={`py-1 rounded-lg border transition cursor-pointer ${table.courseStage === 'clearing' ? 'bg-[#059669] text-white font-bold border-[#059669]' : 'bg-[#171D2B] text-slate-300 border-[#242C3E] hover:bg-[#20273A]'}`}
+                  >
+                    🧹 Libero
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* PRERES Table Switcher Drawer */}
+            {isTransferring && (
+              <div className="bg-[#10141F] border border-[#8B31E0]/50 rounded-xl p-3 space-y-2 animate-in fade-in">
+                <span className="text-xs font-semibold text-[#E9D5FF] block">
+                  Seleziona il tavolo di destinazione su cui spostare la comitiva:
+                </span>
+                <div className="flex gap-2">
+                  <select
+                    value={targetTransferTableId}
+                    onChange={(e) => setTargetTransferTableId(e.target.value)}
+                    className="flex-1 bg-[#171D2B] border border-[#273248] rounded-lg p-1.5 text-xs text-white cursor-pointer focus:outline-none focus:border-[#8B31E0]"
+                  >
+                    <option value="">-- Scegli Tavolo Libero --</option>
+                    {tables
+                      .filter((t) => t.id !== table.id)
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          Tavolo {t.tableNumber} ({t.capacityOverride || t.capacity} px)
+                        </option>
+                      ))}
+                  </select>
+                  <button
+                    disabled={!targetTransferTableId}
+                    onClick={() => {
+                      if (targetTransferTableId && currentRes) {
+                        transferTable(table.id, targetTransferTableId, currentRes.id);
+                        onClose();
+                      }
+                    }}
+                    className="px-3 py-1.5 bg-[#8B31E0] text-white font-semibold text-xs rounded-lg disabled:opacity-50 cursor-pointer"
+                  >
+                    Trasferisci
+                  </button>
+                  <button
+                    onClick={() => setIsTransferring(false)}
+                    className="px-2 py-1.5 text-xs text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    Annulla
+                  </button>
                 </div>
               </div>
             )}
 
             {/* Quick Action Buttons */}
-            <div className="flex items-center gap-2 pt-1">
+            <div className="flex items-center gap-2 pt-1 flex-wrap">
               {currentRes.status === 'confirmed' && (
                 <button
                   onClick={() => {
                     seatReservation(currentRes.id);
                     onClose();
                   }}
-                  className="flex-1 bg-[#6B3FA0] hover:bg-[#5A338A] text-white font-bold py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-xs"
+                  className="flex-1 bg-[#059669] hover:bg-[#047857] text-white font-semibold py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                 >
-                  <UserCheck className="w-4 h-4" />
-                  <span>Fai Sedere Ospiti Subito</span>
+                  <UserCheck className="w-4 h-4 stroke-[1.5]" />
+                  <span>Fai Sedere Subito</span>
                 </button>
               )}
 
@@ -356,274 +391,73 @@ export const TableDetailModal: React.FC<TableDetailModalProps> = ({
                     freeTable(table.id);
                     onClose();
                   }}
-                  className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-xs"
+                  className="flex-1 bg-[#059669] hover:bg-[#047857] text-white font-semibold py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Completa & Libera Tavolo</span>
+                  <CheckCircle2 className="w-4 h-4 stroke-[1.5]" />
+                  <span>Completa & Libera</span>
                 </button>
               )}
 
+              {/* Transfer Table Button */}
+              <button
+                type="button"
+                onClick={() => setIsTransferring(!isTransferring)}
+                className="px-3 py-2 bg-[#171D2B] hover:bg-[#222A3C] text-slate-200 font-semibold text-xs rounded-xl transition border border-[#273248] cursor-pointer"
+                title="Sposta su altro tavolo"
+              >
+                🔄 Sposta
+              </button>
+
+              {/* Delete / Cancel */}
               <button
                 onClick={() => {
                   deleteReservation(currentRes.bookingCode || currentRes.id);
                   onClose();
                 }}
-                className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs transition"
-                title="Elimina definitivamente prenotazione"
+                className="p-2 bg-rose-950/20 hover:bg-rose-900/40 text-rose-400 border border-rose-800/40 rounded-xl text-xs transition cursor-pointer"
+                title="Elimina definitivamente"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-4 h-4 stroke-[1.5]" />
               </button>
             </div>
           </div>
         ) : (
-          <div className="bg-white border border-[#1E3A2F]/15 rounded-2xl p-4 text-center space-y-2 shadow-xs">
-            <div className="text-emerald-700 font-bold text-xs flex items-center justify-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Tavolo attualmente libero alle ore {selectedTime}</span>
+          <div className="bg-[#171D2B] border border-[#273248] rounded-2xl p-4 text-center space-y-3 shadow-xs">
+            <div className="text-[#34D399] font-semibold text-xs flex items-center justify-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse"></span>
+              <span>Tavolo attualmente disponibile alle ore {selectedTime}</span>
             </div>
-            <p className="text-[11px] text-stone-500">
-              Nessun ospite seduto al momento. Puoi inserire una nuova prenotazione o walk-in.
+            <p className="text-[11px] text-slate-400">
+              Nessun ospite seduto al momento. Puoi inserire una prenotazione o trattenere il tavolo.
             </p>
-            {onOpenBookingForTable && (
+
+            <div className="flex items-center justify-center gap-2 pt-1">
+              {onOpenBookingForTable && (
+                <button
+                  onClick={() => onOpenBookingForTable(table.id)}
+                  className="px-4 py-2 bg-[#8B31E0] hover:bg-[#7928CA] text-white font-semibold rounded-xl text-xs transition shadow-xs inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[2]" />
+                  <span>Prenota questo Tavolo</span>
+                </button>
+              )}
+
+              {/* PRERES Table Hold & Lock Button */}
               <button
-                onClick={() => onOpenBookingForTable(table.id)}
-                className="mt-1 px-4 py-2 bg-[#6B3FA0] hover:bg-[#5A338A] text-white font-bold rounded-xl text-xs transition shadow-2xs inline-flex items-center gap-1.5"
+                type="button"
+                onClick={() => toggleTableBlock(table.id, 'Bloccato / Riserva Maître')}
+                className={`px-3 py-2 rounded-xl text-xs font-semibold transition border cursor-pointer ${
+                  table.isBlocked
+                    ? 'bg-rose-950/30 text-rose-400 border-rose-800/50'
+                    : 'bg-[#10141F] text-slate-300 border-[#273248] hover:bg-[#1E2536]'
+                }`}
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Prenota questo Tavolo</span>
+                {table.isBlocked ? '🔓 Sblocca' : '🔒 Hold (Blocca)'}
               </button>
-            )}
+            </div>
           </div>
         )}
 
-        {/* Physical Table Capacity Modifier */}
-        <div className="bg-[#F6F2E9] border border-[#1E3A2F]/15 rounded-2xl p-2.5 flex items-center justify-between gap-2 shadow-2xs">
-          <div className="text-xs">
-            <span className="text-[10px] text-stone-500 block leading-none">Capienza Fisica Tavolo</span>
-            <strong className="text-[#1E3A2F] font-mono-num font-bold">{effectiveCapacity} posti</strong>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <div className="flex items-center bg-white border border-[#1E3A2F]/20 rounded-lg p-0.5">
-              <button
-                type="button"
-                onClick={() => {
-                  const next = Math.max(1, effectiveCapacity - 1);
-                  updateTableCapacity(table.id, next);
-                }}
-                className="w-6 h-6 rounded hover:bg-stone-100 flex items-center justify-center text-stone-700 active:scale-95 transition"
-                title="Riduci capienza fisica"
-              >
-                <Minus className="w-3 h-3" />
-              </button>
-              <span className="px-2 text-xs font-bold font-mono-num text-[#1E3A2F]">
-                {effectiveCapacity}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  const next = Math.min(30, effectiveCapacity + 1);
-                  updateTableCapacity(table.id, next);
-                }}
-                className="w-6 h-6 rounded hover:bg-stone-100 flex items-center justify-center text-stone-700 active:scale-95 transition"
-                title="Aumenta capienza fisica"
-              >
-                <Plus className="w-3 h-3" />
-              </button>
-            </div>
-
-            <div className="flex gap-1">
-              {[2, 4, 6, 8].map((num) => (
-                <button
-                  key={num}
-                  type="button"
-                  onClick={() => updateTableCapacity(table.id, num)}
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono-num font-bold transition ${
-                    effectiveCapacity === num
-                      ? 'bg-[#1E3A2F] text-amber-100'
-                      : 'bg-white border border-[#1E3A2F]/15 text-[#1E3A2F]'
-                  }`}
-                >
-                  {num}p
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* ON-DEMAND EXPANDABLE TURN SCHEDULE (Shown only if requested) */}
-        <div className="border-t border-[#1E3A2F]/10 pt-2">
-          <button
-            type="button"
-            onClick={() => setShowFullSchedule(!showFullSchedule)}
-            className="w-full flex items-center justify-between p-2.5 bg-white border border-[#1E3A2F]/15 rounded-xl text-xs font-bold text-[#1E3A2F] hover:bg-[#FBF8F2] transition shadow-2xs"
-          >
-            <div className="flex items-center gap-2">
-              <History className="w-4 h-4 text-[#6B3FA0]" />
-              <span>
-                Storico Turni di Oggi su questo Tavolo ({tableDayReservations.length} prenotazioni)
-              </span>
-            </div>
-            {showFullSchedule ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-
-          {showFullSchedule && (
-            <div className="mt-2 space-y-1.5 max-h-48 overflow-y-auto pr-1 animate-in fade-in duration-150">
-              {tableDayReservations.length === 0 ? (
-                <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl text-center text-xs text-stone-500 italic">
-                  Nessun'altra prenotazione registrata per questa data.
-                </div>
-              ) : (
-                tableDayReservations.map((r, idx) => (
-                  <div
-                    key={r.id}
-                    className="bg-white border border-[#1E3A2F]/10 rounded-xl p-2.5 flex items-center justify-between text-xs hover:border-[#6B3FA0] transition"
-                  >
-                    <div>
-                      <div className="font-bold text-[#1E3A2F]">
-                        Turno #{idx + 1}: {r.startTime} – {r.endTime} · {r.guestName}
-                      </div>
-                      <div className="text-[10px] text-stone-500 flex items-center gap-2">
-                        <span className="font-bold text-[#6B3FA0]">{r.partySize} px</span>
-                        <span>·</span>
-                        <span className="font-mono">Cod: {r.bookingCode}</span>
-                        {r.notes ? ` · "${r.notes}"` : ''}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
-                          r.status === 'seated'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : r.status === 'completed'
-                            ? 'bg-stone-100 text-stone-600'
-                            : 'bg-purple-100 text-purple-800'
-                        }`}
-                      >
-                        {r.status === 'completed' ? 'Completato' : r.status === 'seated' ? 'Seduto' : 'Confermato'}
-                      </span>
-                      <button
-                        onClick={() => deleteReservation(r.bookingCode || r.id)}
-                        className="text-stone-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition"
-                        title="Elimina definitivamente"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Table Zone Relocation & Removal */}
-        <div className="bg-[#F6F2E9] border border-[#1E3A2F]/15 rounded-2xl p-3 space-y-2 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#1E3A2F] flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-[#1E3A2F]" />
-              <span>Sposta Tavolo in un'Altra Sala</span>
-            </span>
-            <span className="text-[10px] font-bold uppercase text-[#6B3FA0] bg-white px-2 py-0.5 rounded border border-[#1E3A2F]/10">
-              Attuale: {table.zone.toUpperCase()}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between gap-2 pt-0.5">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <button
-                type="button"
-                onClick={() => updateTableDetails(table.id, { zone: 'main' })}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
-                  table.zone === 'main'
-                    ? 'bg-[#1E3A2F] text-amber-100 shadow-2xs'
-                    : 'bg-white border border-[#1E3A2F]/15 text-[#1E3A2F] hover:bg-white/80'
-                }`}
-              >
-                Sala Principale
-              </button>
-              <button
-                type="button"
-                onClick={() => updateTableDetails(table.id, { zone: 'bar' })}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
-                  table.zone === 'bar'
-                    ? 'bg-[#1E3A2F] text-amber-100 shadow-2xs'
-                    : 'bg-white border border-[#1E3A2F]/15 text-[#1E3A2F] hover:bg-white/80'
-                }`}
-              >
-                Zona Bar
-              </button>
-              <button
-                type="button"
-                onClick={() => updateTableDetails(table.id, { zone: 'private' })}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
-                  table.zone === 'private'
-                    ? 'bg-[#1E3A2F] text-amber-100 shadow-2xs'
-                    : 'bg-white border border-[#1E3A2F]/15 text-[#1E3A2F] hover:bg-white/80'
-                }`}
-              >
-                Sala Privata VIP
-              </button>
-            </div>
-
-            {!isConfirmingDeleteTable ? (
-              <button
-                type="button"
-                onClick={() => setIsConfirmingDeleteTable(true)}
-                className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs whitespace-nowrap"
-                title="Elimina tavolo dalla disposizione della sala"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Rimuovi Tavolo</span>
-              </button>
-            ) : (
-              <div className="flex items-center gap-1.5 bg-rose-100 border border-rose-300 p-1 rounded-lg animate-in fade-in">
-                <button
-                  type="button"
-                  onClick={() => {
-                    removeCustomTable(table.id);
-                    onClose();
-                  }}
-                  className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-xs font-bold transition shadow-xs whitespace-nowrap"
-                >
-                  Conferma Eliminazione
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsConfirmingDeleteTable(false)}
-                  className="px-2 py-1 bg-white hover:bg-stone-100 text-stone-700 rounded text-xs font-semibold transition"
-                >
-                  Annulla
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="pt-2 border-t border-[#1E3A2F]/15 flex items-center justify-between gap-2">
-          {activeGroup ? (
-            <button
-              onClick={() => {
-                unmergeTables(activeGroup.id);
-                onClose();
-              }}
-              className="px-3 py-1.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-semibold hover:bg-rose-100 transition shadow-2xs"
-            >
-              Sciogli Accorpamento
-            </button>
-          ) : (
-            <span className="text-[11px] text-stone-400">Tavolo Singolo</span>
-          )}
-
-          <button
-            onClick={onClose}
-            className="px-5 py-2 bg-[#1E3A2F] text-amber-100 font-bold rounded-xl text-xs transition hover:bg-[#152a22] shadow-xs"
-          >
-            Chiudi
-          </button>
-        </div>
       </div>
     </div>
   );

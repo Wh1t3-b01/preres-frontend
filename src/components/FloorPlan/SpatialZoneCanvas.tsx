@@ -1,11 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { RestaurantTable, TableGroup } from '../../types';
+import { RestaurantTable, TableGroup, TableZone } from '../../types';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { TableCard } from './TableCard';
-import { Move, Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus } from 'lucide-react';
 
 interface SpatialZoneCanvasProps {
-  zoneKey: 'bar' | 'main' | 'private';
+  zoneKey: TableZone;
   zoneTitle: string;
   zoneSubtitle: string;
   icon: React.ReactNode;
@@ -80,18 +80,20 @@ export const SpatialZoneCanvas: React.FC<SpatialZoneCanvasProps> = ({
   };
 
   return (
-    <section className="bg-[#F6F2E9] border-2 border-[#1E3A2F]/20 rounded-3xl p-4 sm:p-6 shadow-xs relative w-full overflow-hidden">
+    <section className="bg-[#10141F] border border-[#222A3C] rounded-3xl p-3.5 sm:p-5 shadow-sm relative w-full overflow-hidden flex flex-col justify-between text-slate-100">
       {/* Zone Header */}
-      <div className="flex flex-wrap items-center justify-between pb-3 mb-3 border-b border-[#1E3A2F]/15 gap-2">
-        <div className="flex items-center gap-2.5">
-          <div className="p-1.5 bg-[#1E3A2F] text-amber-100 rounded-xl shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between pb-2.5 mb-2.5 border-b border-[#222A3C] gap-2">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-[#171C2A] text-[#C084FC] rounded-xl shadow-xs border border-[#273044] shrink-0">
             {icon}
           </div>
           <div>
-            <h3 className="text-base font-bold font-brand text-[#1E3A2F] tracking-wide">
+            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide leading-tight">
               {zoneTitle}
             </h3>
-            <p className="text-[11px] text-[#1E3A2F]/60">{zoneSubtitle}</p>
+            <p className="text-[10px] text-slate-400 truncate max-w-[280px] sm:max-w-none">
+              {zoneSubtitle}
+            </p>
           </div>
         </div>
 
@@ -99,94 +101,84 @@ export const SpatialZoneCanvas: React.FC<SpatialZoneCanvasProps> = ({
           {onAddNewTable && (
             <button
               onClick={onAddNewTable}
-              className="flex items-center gap-1 bg-[#6B3FA0] text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-[#5A338A] transition shadow-xs cursor-pointer"
+              className="px-2 py-1 bg-[#171C2A] hover:bg-[#20273A] border border-[#273044] text-[#C084FC] rounded-xl text-xs transition cursor-pointer flex items-center gap-1 shadow-2xs"
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Aggiungi Tavolo</span>
+              <Plus className="w-3 h-3 stroke-[2]" />
+              <span className="hidden sm:inline text-[10px] font-semibold">+ Tavolo</span>
             </button>
           )}
-          <span className="text-xs text-[#1E3A2F] font-bold bg-white px-2.5 py-1 rounded-lg border border-[#1E3A2F]/15 font-mono-num shadow-2xs">
-            {tables.length} Tavoli
-          </span>
+
+          <div className="text-[10px] font-mono text-slate-400 bg-[#171C2A] px-2 py-0.5 rounded-lg border border-[#273044]">
+            {tables.length} tavoli
+          </div>
         </div>
       </div>
 
-      {/* Blueprint Room Canvas with responsive scroll wrapper */}
-      <div className="w-full overflow-x-auto pb-2">
-        <div
-          ref={containerRef}
-          className={`relative w-full min-w-[700px] md:min-w-full min-h-[440px] md:min-h-[480px] rounded-2xl border border-[#1E3A2F]/15 bg-[#FDFBF7] overflow-hidden transition-all shadow-inner ${
-            isLayoutEditMode ? 'ring-4 ring-amber-400 bg-amber-50/20' : ''
-          }`}
-          style={{
-            backgroundImage: isLayoutEditMode
-              ? 'radial-gradient(#1E3A2F 2px, transparent 2px)'
-              : 'radial-gradient(#1E3A2F 0.5px, transparent 0.5px)',
-            backgroundSize: isLayoutEditMode ? '24px 24px' : '32px 32px',
-          }}
-        >
-          {/* Architectural zone accents */}
-          {zoneKey === 'bar' && (
-            <div className="absolute top-4 left-6 right-6 h-8 bg-amber-900/10 border-2 border-dashed border-amber-900/20 rounded-xl flex items-center justify-center text-[10px] uppercase font-bold text-amber-900/60 tracking-widest pointer-events-none">
-              🍸 Bancone Cocktails & Sommelier
-            </div>
-          )}
-
-          {zoneKey === 'private' && (
-            <div className="absolute top-4 left-6 right-6 h-8 bg-[#1E3A2F]/5 border-2 border-dashed border-[#1E3A2F]/20 rounded-xl flex items-center justify-center text-[10px] uppercase font-bold text-[#1E3A2F]/60 tracking-widest pointer-events-none">
-              🕯️ Privé Esclusivo & Degustazione
-            </div>
-          )}
-
-          {/* Tables rendered on spatial coordinates */}
-          {tables.map((table) => {
-            const matchingGroup = activeGroups.find((g) =>
-              g.memberTableIds.includes(table.id)
-            );
-
-            return (
-              <div
-                key={table.id}
-                onPointerDown={(e) => handlePointerDown(e, table)}
-                style={{
-                  left: `${table.x}%`,
-                  top: `${table.y}%`,
-                  touchAction: 'none',
-                }}
-                className={`absolute transition-all duration-75 ${
-                  isLayoutEditMode
-                    ? 'cursor-grab active:cursor-grabbing hover:scale-105 z-20'
-                    : 'z-10'
-                } ${draggingTableId === table.id ? 'opacity-80 scale-110 z-30 ring-4 ring-[#6B3FA0] rounded-2xl' : ''}`}
-              >
-                {/* Drag handle & Delete badge when Move Mode is active */}
-                {isLayoutEditMode && (
-                  <div className="absolute -top-3 -right-2 flex items-center gap-1 z-30 animate-in fade-in">
-                    <div className="bg-amber-500 text-stone-900 p-1 rounded-full shadow-md">
-                      <Move className="w-3 h-3" />
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeCustomTable(table.id);
-                      }}
-                      className="bg-rose-600 hover:bg-rose-700 text-white p-1 rounded-full shadow-md transition active:scale-90"
-                      title="Elimina tavolo dalla sala"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                )}
-
-                <TableCard
-                  table={table}
-                  group={matchingGroup}
-                  onSelectTableForDetails={onSelectTableForDetails}
-                />
-              </div>
-            );
-          })}
+      {/* Spatial 2D Interactive Canvas */}
+      <div
+        ref={containerRef}
+        className={`relative w-full h-[360px] sm:h-[390px] rounded-2xl transition-all duration-200 overflow-hidden ${
+          isLayoutEditMode
+            ? 'bg-[#0B0E17] ring-2 ring-[#A855F7]/40 cursor-crosshair'
+            : 'bg-[#0B0E17] border border-[#1A2030]'
+        }`}
+        style={{
+          backgroundImage:
+            'radial-gradient(circle, #21293D 1px, transparent 1px)',
+          backgroundSize: '22px 22px',
+        }}
+      >
+        {/* Wall & Boundary Visual Guides */}
+        <div className="absolute top-2 left-3 text-[8px] uppercase tracking-widest text-slate-600 font-semibold pointer-events-none select-none">
+          Nord · Parete Esterna
         </div>
+        <div className="absolute bottom-2 right-3 text-[8px] uppercase tracking-widest text-slate-600 font-semibold pointer-events-none select-none">
+          Sud · Passaggio Sala
+        </div>
+
+        {/* Render Tables */}
+        {tables.map((table) => {
+          const group = activeGroups.find((g) => g.memberTableIds.includes(table.id));
+          const isDragging = draggingTableId === table.id;
+
+          return (
+            <div
+              key={table.id}
+              onPointerDown={(e) => handlePointerDown(e, table)}
+              className={`absolute transition-transform ${
+                isDragging ? 'z-30 scale-105 opacity-90' : 'z-10'
+              } ${isLayoutEditMode ? 'cursor-grab active:cursor-grabbing ring-1 ring-[#A855F7]/40 rounded-2xl' : ''}`}
+              style={{
+                left: `${table.x}%`,
+                top: `${table.y}%`,
+                touchAction: 'none',
+              }}
+            >
+              <TableCard
+                table={table}
+                group={group}
+                onSelectTableForDetails={onSelectTableForDetails}
+              />
+
+              {/* Edit Mode Delete Button */}
+              {isLayoutEditMode && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirm(`Rimuovere ${table.name || table.tableNumber}?`)) {
+                      removeCustomTable(table.id);
+                    }
+                  }}
+                  className="absolute -top-1 -right-1 bg-rose-600 text-white p-1 rounded-full shadow-md hover:bg-rose-700 z-40 transition cursor-pointer"
+                  title="Elimina Tavolo"
+                >
+                  <Trash2 className="w-2.5 h-2.5 stroke-[1.5]" />
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
     </section>
   );

@@ -1,10 +1,10 @@
 /**
  * Sotto Sotto Bar & Grill — Global Session & Authentication Context
  * Manages Supabase Auth lifecycle, session persistence, role-based access control,
- * and seamless fallback demo authentication when running without remote env credentials.
+ * and forgot password / password reset recovery flows.
  */
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
-import { User, Session, AuthError } from '@supabase/supabase-js';
+import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { StaffRole } from '../types';
 
@@ -17,6 +17,8 @@ export interface AuthContextType {
   error: string | null;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
+  resetPasswordForEmail: (email: string) => Promise<{ success: boolean; error?: string }>;
+  updatePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   switchRole: (newRole: StaffRole) => void;
   clearError: () => void;
 }
@@ -88,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initAuth();
 
-    // Listen to Supabase Auth State changes (TOKEN_REFRESHED, SIGNED_IN, SIGNED_OUT)
+    // Listen to Supabase Auth State changes (TOKEN_REFRESHED, SIGNED_IN, SIGNED_OUT, PASSWORD_RECOVERY)
     if (isSupabaseConfigured) {
       const { data: authListener } = supabase.auth.onAuthStateChange(
         async (event, currentSession) => {
@@ -151,10 +153,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return { success: true };
           }
         } else {
-          // Demo authentication simulation with simulated security check
+          // Local demo session simulation
           await new Promise((res) => setTimeout(res, 500));
 
-          // Determine role from email address if available
           let demoRole: StaffRole = 'manager';
           if (cleanEmail.includes('host')) demoRole = 'host';
           else if (cleanEmail.includes('waiter') || cleanEmail.includes('sala')) demoRole = 'waiter';
@@ -204,6 +205,82 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     []
   );
 
+  const resetPasswordForEmail = useCallback(
+    async (email: string): Promise<{ success: boolean; error?: string }> => {
+      setIsLoading(true);
+      setError(null);
+      const cleanEmail = email.trim().toLowerCase();
+
+      try {
+        if (isSupabaseConfigured) {
+          const redirectTo = `${window.location.origin}/reset-password`;
+          const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+            redirectTo,
+          });
+
+          if (resetError) {
+            let errorMsg = resetError.message;
+            if (resetError.status === 429) {
+              errorMsg = 'Troppe richieste di recupero. Attendi qualche minuto prima di riprovare.';
+            }
+            setError(errorMsg);
+            setIsLoading(false);
+            return { success: false, error: errorMsg };
+          }
+          setIsLoading(false);
+          return { success: true };
+        } else {
+          await new Promise((res) => setTimeout(res, 600));
+          setIsLoading(false);
+          return { success: true };
+        }
+      } catch (err: any) {
+        const msg = err?.message || 'Impossibile inviare il link di recupero password.';
+        setError(msg);
+        setIsLoading(false);
+        return { success: false, error: msg };
+      }
+    },
+    []
+  );
+
+  const updatePassword = useCallback(
+    async (newPassword: string): Promise<{ success: boolean; error?: string }> => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        if (isSupabaseConfigured) {
+          const { data, error: updateError } = await supabase.auth.updateUser({
+            password: newPassword,
+          });
+
+          if (updateError) {
+            setError(updateError.message);
+            setIsLoading(false);
+            return { success: false, error: updateError.message };
+          }
+
+          if (data.user) {
+            setUser(data.user);
+          }
+          setIsLoading(false);
+          return { success: true };
+        } else {
+          await new Promise((res) => setTimeout(res, 500));
+          setIsLoading(false);
+          return { success: true };
+        }
+      } catch (err: any) {
+        const msg = err?.message || 'Impossibile aggiornare la password.';
+        setError(msg);
+        setIsLoading(false);
+        return { success: false, error: msg };
+      }
+    },
+    []
+  );
+
   const signOut = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -247,10 +324,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       error,
       signIn,
       signOut,
+      resetPasswordForEmail,
+      updatePassword,
       switchRole,
       clearError,
     }),
-    [user, session, role, isLoading, error, signIn, signOut, switchRole, clearError]
+    [user, session, role, isLoading, error, signIn, signOut, resetPasswordForEmail, updatePassword, switchRole, clearError]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -7,6 +7,8 @@
     width: 100%;
     margin: 0;
     padding: 0;
+    background-color: #0E121B;
+    color: #F8FAFC;
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
@@ -20,18 +22,18 @@
   }
 }
 
-/* Custom scrollbars for clean dashboard display */
+/* Custom minimal twilight scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(30, 58, 47, 0.2);
+  background: rgba(148, 163, 184, 0.2);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(30, 58, 47, 0.4);
+  background: rgba(139, 49, 224, 0.4);
 }

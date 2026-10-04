@@ -1,4 +1,4 @@
-export type TableZone = 'bar' | 'main' | 'private' | 'terrace';
+export type TableZone = 'bar' | 'main' | 'main_a' | 'main_b' | 'private' | 'terrace';
 
 export type TableShape = 'rect-h' | 'rect-v' | 'square' | 'round' | 'booth';
 
@@ -15,6 +15,30 @@ export type TableCourseStage =
 
 export type StaffRole = 'manager' | 'host' | 'waiter';
 
+export type VIPTier = 'regular' | 'vip' | 'top_spender' | 'critic' | 'friends_family';
+
+export interface GuestProfile {
+  id: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  vipTier: VIPTier;
+  dietaryRestrictions: string[]; // e.g. ['Gluten Free', 'Nut Allergy', 'Lactose Intolerant']
+  preferences: string[]; // e.g. ['Prefers Booth G', 'Still Water room temp', 'Barolo Lover']
+  internalNotes?: string;
+  birthday?: string; // MM-DD
+  anniversary?: string; // MM-DD
+  totalVisits: number;
+  totalSpend: number;
+  avgSpend: number;
+  lastVisitDate?: string;
+  noShowCount: number;
+  cancellationCount: number;
+  tags: string[]; // e.g. ['High Roller', 'Wine Collector', 'Quiet Table']
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface RestaurantTable {
   id: string;
   tableNumber: string;
@@ -27,6 +51,8 @@ export interface RestaurantTable {
   minPartySize?: number;
   maxPartySize?: number;
   isAvailable?: boolean;
+  isBlocked?: boolean; // Resy-style table block/hold
+  blockedReason?: string; // e.g. 'VIP Hold', 'Manutenzione', 'Riserva Direzione'
   // Spatial Floor Designer Coordinates
   x: number; // percentage or pixel offset in zone canvas
   y: number;
@@ -56,6 +82,10 @@ export interface Reservation {
   guestName: string;
   guestPhone?: string;
   guestEmail?: string;
+  guestProfileId?: string;
+  vipTier?: VIPTier;
+  dietaryRestrictions?: string[];
+  preferences?: string[];
   reservationDate: string; // YYYY-MM-DD
   startTime: string; // HH:MM
   endTime: string; // HH:MM
@@ -72,6 +102,7 @@ export interface Reservation {
   depositAmount?: number;
   serverName?: string;
   totalSpendEstimate?: number;
+  courseStage?: TableCourseStage;
 }
 
 export interface WaitlistItem {
@@ -86,6 +117,8 @@ export interface WaitlistItem {
   status: 'waiting' | 'notified' | 'seated' | 'cancelled';
   notificationSentAt?: string;
   preferredZone?: TableZone;
+  guestProfileId?: string;
+  vipTier?: VIPTier;
 }
 
 export interface TimeSlotOption {
@@ -95,7 +128,7 @@ export interface TimeSlotOption {
   isGroup: boolean;
   memberTableIds: string[];
   zone: TableZone;
-  fitScore: number; // How optimal the match is (lower is closer to exact capacity)
+  fitScore: number;
 }
 
 export interface RecommendedMerge {
@@ -135,11 +168,14 @@ export interface ToastMessage {
 }
 
 export interface OperationsKPIs {
-  bookedCovers: number; // Total covers booked for the day
-  seatedCovers: number; // Covers currently sitting
-  completedCovers: number; // Covers finished
-  remainingCovers: number; // Covers yet to arrive later in shift
+  bookedCovers: number;
+  seatedCovers: number;
+  completedCovers: number;
+  remainingCovers: number;
   totalReservationsCount: number;
-  turnoverRate: number;
+  occupiedTablesCount: number;
+  totalTablesCount: number;
+  occupancyPercentage: number;
   estimatedTotalRevenue: number;
+  turnoverRate: number;
 }

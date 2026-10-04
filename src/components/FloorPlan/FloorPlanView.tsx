@@ -2,20 +2,13 @@ import React, { useState } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { SpatialZoneCanvas } from './SpatialZoneCanvas';
 import { AddTableModal } from '../Modals/AddTableModal';
+import { TableZone } from '../../types';
 import {
   Layers,
   X,
-  Plus,
-  Users,
-  Clock,
   Wine,
   UtensilsCrossed,
   Shield,
-  HelpCircle,
-  Move,
-  Check,
-  Compass,
-  RotateCcw,
 } from 'lucide-react';
 
 interface FloorPlanViewProps {
@@ -31,24 +24,32 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     tables,
     tableGroups,
     selectedDate,
-    selectedTime,
     selectedTableIds,
     clearTableSelection,
     mergeTables,
     unmergeTables,
-    isLayoutEditMode,
-    setIsLayoutEditMode,
-    resetToDefaults,
   } = useRestaurant();
 
+  const [activeZoneFilter, setActiveZoneFilter] = useState<'all' | TableZone>('all');
   const [groupNameInput, setGroupNameInput] = useState('');
   const [isAddTableOpen, setIsAddTableOpen] = useState(false);
-  const [addTableZone, setAddTableZone] = useState<'main' | 'bar' | 'private'>('main');
+  const [addTableZone, setAddTableZone] = useState<TableZone>('main_a');
 
-  // Tables separated by zone
+  // Tables separated by modern zoning
   const barTables = tables.filter((t) => t.zone === 'bar');
-  const mainTables = tables.filter((t) => t.zone === 'main');
   const privateTables = tables.filter((t) => t.zone === 'private');
+  
+  // MAIN A: Table G (West wall), North wall 10, 11, 12, South wall 20, 21
+  const mainATables = tables.filter(
+    (t) => t.zone === 'main_a' || (t.zone === 'main' && ['G', '10', '11', '12', '20', '21'].includes(t.id))
+  );
+
+  // MAIN B: North wall 13, 14, 15, 16, South wall 21, 22, 23
+  const mainBTables = tables.filter(
+    (t) =>
+      t.zone === 'main_b' ||
+      (t.zone === 'main' && ['13', '14', '15', '16', '21_b', '22', '23'].includes(t.id))
+  );
 
   // Active groups for currently selected date
   const activeDateGroups = tableGroups.filter((g) => g.groupDate === selectedDate);
@@ -72,156 +73,167 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     }
   };
 
-  const handleOpenAddTable = (zone: 'main' | 'bar' | 'private' = 'main') => {
+  const handleOpenAddTable = (zone: TableZone = 'main_a') => {
     setAddTableZone(zone);
     setIsAddTableOpen(true);
   };
 
   return (
-    <div className="space-y-6 max-w-[1700px] mx-auto pb-12">
-      {/* MANAGEMENT & LAYOUT ACTION TOOLBAR */}
-      <div className="bg-white border border-[#1E3A2F]/15 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#1E3A2F] text-amber-100 flex items-center justify-center font-bold text-xs">
-            <Compass className="w-4 h-4" />
-          </div>
-          <div>
-            <h3 className="font-brand font-bold text-sm text-[#1E3A2F]">
-              Disposizione Sala & Gestione Tavoli
-            </h3>
-            <p className="text-[11px] text-stone-500">
-              Aggiungi nuovi tavoli, spostali con drag-and-drop o unisci per grandi gruppi
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
-          {/* Add Table Button */}
+    <div className="space-y-5 max-w-[1780px] mx-auto pb-16 text-slate-100">
+      
+      {/* ZONE FILTER & VIEW SELECTOR TOOLBAR */}
+      <div className="bg-[#10141F] border border-[#222A3C] rounded-2xl p-3 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+        
+        {/* Left: Minimal Zone Filter Tabs */}
+        <div className="flex items-center gap-1 p-0.5 bg-[#0B0E17] border border-[#1C2333] rounded-xl overflow-x-auto max-w-full">
           <button
-            onClick={() => handleOpenAddTable('main')}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-[#6B3FA0] hover:bg-[#5A338A] text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Aggiungi Tavolo</span>
-          </button>
-
-          {/* Move Table Toggle (Drag & Drop Mode) */}
-          <button
-            onClick={() => setIsLayoutEditMode(!isLayoutEditMode)}
-            className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl transition border shadow-xs cursor-pointer ${
-              isLayoutEditMode
-                ? 'bg-amber-400 text-[#1E3A2F] border-amber-500 ring-2 ring-amber-300'
-                : 'bg-stone-100 hover:bg-stone-200 text-[#1E3A2F] border-[#1E3A2F]/10'
+            onClick={() => setActiveZoneFilter('all')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap cursor-pointer ${
+              activeZoneFilter === 'all'
+                ? 'bg-[#8B31E0]/25 text-[#C084FC] border border-[#8B31E0]/40 shadow-xs'
+                : 'text-slate-400 hover:text-slate-100 hover:bg-[#151A27]'
             }`}
           >
-            <Move className="w-3.5 h-3.5" />
-            <span>{isLayoutEditMode ? 'Termina Spostamento Tavoli' : 'Sposta Tavoli (Drag & Drop)'}</span>
+            Vista Completa (Sviluppo Verticale)
           </button>
 
-          {/* Reset Layout to Default 32 Tables */}
           <button
-            onClick={resetToDefaults}
-            title="Ripristina layout originale con tutti i 32 tavoli"
-            className="flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200 text-[#1E3A2F]/80 text-xs font-semibold rounded-xl transition border border-[#1E3A2F]/10 cursor-pointer"
+            onClick={() => setActiveZoneFilter('bar')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap cursor-pointer ${
+              activeZoneFilter === 'bar'
+                ? 'bg-[#8B31E0]/25 text-[#C084FC] border border-[#8B31E0]/40 shadow-xs'
+                : 'text-slate-400 hover:text-slate-100 hover:bg-[#151A27]'
+            }`}
           >
-            <RotateCcw className="w-3.5 h-3.5 text-stone-500" />
-            <span>Ripristina Sala ({tables.length} tavoli)</span>
+            Sala Bar ({barTables.length})
+          </button>
+
+          <button
+            onClick={() => setActiveZoneFilter('main_a')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap cursor-pointer ${
+              activeZoneFilter === 'main_a'
+                ? 'bg-[#8B31E0]/25 text-[#C084FC] border border-[#8B31E0]/40 shadow-xs'
+                : 'text-slate-400 hover:text-slate-100 hover:bg-[#151A27]'
+            }`}
+          >
+            MAIN A - Ovest ({mainATables.length})
+          </button>
+
+          <button
+            onClick={() => setActiveZoneFilter('main_b')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap cursor-pointer ${
+              activeZoneFilter === 'main_b'
+                ? 'bg-[#8B31E0]/25 text-[#C084FC] border border-[#8B31E0]/40 shadow-xs'
+                : 'text-slate-400 hover:text-slate-100 hover:bg-[#151A27]'
+            }`}
+          >
+            MAIN B - Est ({mainBTables.length})
+          </button>
+
+          <button
+            onClick={() => setActiveZoneFilter('private')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap cursor-pointer ${
+              activeZoneFilter === 'private'
+                ? 'bg-[#8B31E0]/25 text-[#C084FC] border border-[#8B31E0]/40 shadow-xs'
+                : 'text-slate-400 hover:text-slate-100 hover:bg-[#151A27]'
+            }`}
+          >
+            Privé ({privateTables.length})
           </button>
         </div>
-      </div>
 
-      {/* ACTIVE DRAG-AND-DROP MOVE BANNER */}
-      {isLayoutEditMode && (
-        <div className="bg-amber-500 text-[#1E3A2F] rounded-2xl p-4 shadow-md flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-center gap-2.5">
-            <Move className="w-5 h-5 shrink-0" />
-            <div className="text-xs">
-              <strong className="font-bold block text-sm">Modalità Spostamento Tavoli Attiva</strong>
-              <span>Trascina con il mouse o dito qualsiasi tavolo per posizionarlo dove desideri nella sala.</span>
-            </div>
+        {/* Right: Minimal Legend */}
+        <div className="flex items-center gap-3 text-[11px] text-slate-400 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#10B981]" />
+            <span>Libero</span>
           </div>
-          <button
-            onClick={() => setIsLayoutEditMode(false)}
-            className="px-4 py-1.5 bg-[#1E3A2F] text-amber-100 text-xs font-bold rounded-xl hover:bg-[#152a22] transition shadow-xs whitespace-nowrap"
-          >
-            Salva Posizioni
-          </button>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#A855F7]" />
+            <span>Prenotato</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#059669] ring-2 ring-[#10B981]/40" />
+            <span>Seduto</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-400" />
+            <span>&gt;100 min</span>
+          </div>
         </div>
-      )}
+
+      </div>
 
       {/* FLOATING MULTI-TABLE MERGE ACTION BAR (when tables are selected) */}
       {selectedTableIds.length > 0 && (
-        <div className="sticky top-24 z-30 bg-[#1E3A2F] text-white rounded-2xl p-4 shadow-xl border border-amber-300/30 flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-200">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="w-8 h-8 rounded-xl bg-amber-400/20 border border-amber-300/40 flex items-center justify-center text-amber-300 font-bold text-sm">
+        <div className="sticky top-16 z-30 bg-[#161B28] text-white rounded-2xl p-3 shadow-2xl border border-[#8B31E0]/60 flex flex-col md:flex-row items-center justify-between gap-3 animate-in fade-in duration-150">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="w-7 h-7 rounded-xl bg-[#8B31E0]/30 border border-[#A855F7]/40 flex items-center justify-center text-[#C084FC] font-bold text-xs">
               {selectedTableIds.length}
             </div>
             <div>
-              <div className="font-bold text-sm text-amber-200 flex items-center gap-2">
+              <div className="font-semibold text-xs text-[#E9D5FF] flex items-center gap-2">
                 <span>Tavoli Selezionati: {selectedTableIds.join(' + ')}</span>
-                <span className="text-xs bg-white/10 px-2 py-0.5 rounded font-mono-num">
-                  Capienza Totale: {selectedTotalCapacity} Ospiti
+                <span className="text-[10px] bg-white/10 px-2 py-0.2 rounded font-mono">
+                  Capienza: {selectedTotalCapacity} pax
                 </span>
               </div>
-              <p className="text-[11px] text-stone-300">
-                Accorpa in un unico maxi-tavolo o prenota direttamente per questo gruppo.
-              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 w-full md:w-auto">
+          <div className="flex items-center gap-2 w-full md:w-auto">
             <input
               type="text"
-              placeholder="Nome maxi-tavolo (es. Tavolo 14+15 Gruppo)"
+              placeholder="Nome maxi-tavolo..."
               value={groupNameInput}
               onChange={(e) => setGroupNameInput(e.target.value)}
-              className="bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 text-xs text-white placeholder-white/50 focus:outline-none focus:border-amber-300 w-full md:w-56"
+              className="bg-[#0E121C] border border-[#273044] rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#A855F7] w-full md:w-48"
             />
             <button
               onClick={handleMergeSelected}
               disabled={selectedTableIds.length < 2}
-              className="bg-amber-400 hover:bg-amber-300 text-[#1E3A2F] font-bold px-4 py-2 rounded-xl text-xs transition shadow-xs whitespace-nowrap disabled:opacity-50 flex items-center gap-1.5"
+              className="bg-[#8B31E0] hover:bg-[#7928CA] text-white font-semibold px-3.5 py-1.5 rounded-xl text-xs transition shadow-md whitespace-nowrap disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
             >
-              <Layers className="w-3.5 h-3.5" />
+              <Layers className="w-3.5 h-3.5 stroke-[1.5]" />
               <span>Unisci Tavoli</span>
             </button>
             <button
               onClick={clearTableSelection}
-              className="p-2 text-stone-300 hover:text-white rounded-xl hover:bg-white/10 transition"
-              title="Deseleziona tutti"
+              className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition cursor-pointer"
+              title="Deseleziona"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4 stroke-[1.5]" />
             </button>
           </div>
         </div>
       )}
 
-      {/* ACTIVE ACCORPAMENTI BANNER */}
+      {/* ACTIVE GROUPS BANNER */}
       {activeDateGroups.length > 0 && (
-        <div className="bg-amber-50/90 border-2 border-amber-500/40 rounded-2xl p-4 shadow-xs">
+        <div className="bg-[#121622] border border-[#8B31E0]/40 rounded-2xl p-3 shadow-xs">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-amber-700" />
-              Accorpamenti Attivi per la data selezionata ({activeDateGroups.length})
+            <span className="text-xs font-semibold text-[#C084FC] uppercase tracking-wider flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 stroke-[1.5]" />
+              Accorpamenti Attivi ({activeDateGroups.length})
             </span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
             {activeDateGroups.map((group) => (
               <div
                 key={group.id}
-                className="bg-white border border-amber-300/80 rounded-xl p-3 flex items-center justify-between shadow-xs"
+                className="bg-[#0E121B] border border-[#222A3C] rounded-xl p-2.5 flex items-center justify-between shadow-xs"
               >
                 <div>
-                  <h4 className="font-bold text-xs text-[#1E3A2F]">{group.combinedName}</h4>
-                  <div className="text-[11px] text-stone-600 flex items-center gap-2 mt-0.5">
+                  <h4 className="font-semibold text-xs text-white">{group.combinedName}</h4>
+                  <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
                     <span>Tavoli: {group.memberTableIds.join(', ')}</span>
                     <span>·</span>
-                    <span className="font-semibold text-[#6B3FA0]">{group.totalCapacity} posti</span>
+                    <span className="font-semibold text-[#C084FC]">{group.totalCapacity} posti</span>
                   </div>
                 </div>
                 <button
                   onClick={() => unmergeTables(group.id)}
-                  className="text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2.5 py-1 rounded-lg transition"
+                  className="text-[11px] font-medium text-rose-400 bg-rose-950/30 hover:bg-rose-900/50 border border-rose-800/40 px-2 py-0.5 rounded-lg transition cursor-pointer"
                 >
                   Sciogli
                 </button>
@@ -231,81 +243,69 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         </div>
       )}
 
-      {/* 3 SPATIAL ZONES WITH DRAG-AND-DROP REPOSITIONING */}
-      <div className="grid grid-cols-1 gap-8">
-        {/* Zone 1: Bar Area */}
+      {/* ========================================================================= */}
+      {/* CONTINUOUS VERTICAL DEVELOPMENT FLOOR PLAN (STACKED ARCHITECTURAL ZONES) */}
+      {/* ========================================================================= */}
+      
+      {(activeZoneFilter === 'all' || activeZoneFilter === 'bar') && (
         <SpatialZoneCanvas
           zoneKey="bar"
-          zoneTitle="1. Zona Bar & Aperitivi"
-          zoneSubtitle="Tavoli B1 - B4 & Bancone Mixology"
-          icon={<Wine className="w-4 h-4" />}
+          zoneTitle="1. Sala Bar & Lounge"
+          zoneSubtitle="Tavoli B1 - B4 (2 pax compatti e 4 pax bench) & Bancone Ovest"
+          icon={<Wine className="w-3.5 h-3.5 stroke-[1.5]" />}
           tables={barTables}
           activeGroups={activeDateGroups}
           onSelectTableForDetails={onSelectTableForDetails}
           onAddNewTable={() => handleOpenAddTable('bar')}
         />
+      )}
 
-        {/* Zone 2: Main Dining Room */}
+      {(activeZoneFilter === 'all' || activeZoneFilter === 'main_a') && (
         <SpatialZoneCanvas
-          zoneKey="main"
-          zoneTitle="2. Sala Principale (Main Dining Room)"
-          zoneSubtitle="Fila Inferiore 10-16 & Booth G · Fila Superiore 20-23"
-          icon={<UtensilsCrossed className="w-4 h-4" />}
-          tables={mainTables}
+          zoneKey="main_a"
+          zoneTitle="2. MAIN A — Ala Ovest"
+          zoneSubtitle="Booth VIP G, Tavoli Nord 10-12 e Sud 20-21 (Tavolo 21 unificato)"
+          icon={<UtensilsCrossed className="w-3.5 h-3.5 stroke-[1.5]" />}
+          tables={mainATables}
           activeGroups={activeDateGroups}
           onSelectTableForDetails={onSelectTableForDetails}
-          onAddNewTable={() => handleOpenAddTable('main')}
+          onAddNewTable={() => handleOpenAddTable('main_a')}
         />
+      )}
 
-        {/* Zone 3: Private Dining Room */}
+      {(activeZoneFilter === 'all' || activeZoneFilter === 'main_b') && (
+        <SpatialZoneCanvas
+          zoneKey="main_b"
+          zoneTitle="3. MAIN B — Ala Est"
+          zoneSubtitle="Tavoli Nord 13-16 e Sud 21-23 (Tavolo 21 specchiato in tempo reale)"
+          icon={<UtensilsCrossed className="w-3.5 h-3.5 stroke-[1.5]" />}
+          tables={mainBTables}
+          activeGroups={activeDateGroups}
+          onSelectTableForDetails={onSelectTableForDetails}
+          onAddNewTable={() => handleOpenAddTable('main_b')}
+        />
+      )}
+
+      {(activeZoneFilter === 'all' || activeZoneFilter === 'private') && (
         <SpatialZoneCanvas
           zoneKey="private"
-          zoneTitle="3. Sala Riservata (Private Dining Room)"
-          zoneSubtitle="Tavoli VIP 30 - 34 · Atmosfera Esclusiva"
-          icon={<Shield className="w-4 h-4" />}
+          zoneTitle="4. Private Dining Room (Privé)"
+          zoneSubtitle="Tavoli 30-34 per cene riservate ed eventi speciali"
+          icon={<Shield className="w-3.5 h-3.5 stroke-[1.5]" />}
           tables={privateTables}
           activeGroups={activeDateGroups}
           onSelectTableForDetails={onSelectTableForDetails}
           onAddNewTable={() => handleOpenAddTable('private')}
         />
-      </div>
+      )}
 
-      {/* Legend Footer */}
-      <div className="bg-white border border-[#1E3A2F]/15 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 text-xs text-[#1E3A2F]/80">
-        <div className="flex items-center gap-2 font-semibold">
-          <HelpCircle className="w-4 h-4 text-[#1E3A2F]/50" />
-          <span>Legenda Stati Tavolo:</span>
-        </div>
-        <div className="flex items-center gap-4 flex-wrap text-[11px]">
-          <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-emerald-500 border border-emerald-600"></span>
-            <span>Libero</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-[#6B3FA0] border border-[#5A338A]"></span>
-            <span>Prenotato</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-emerald-600 border border-emerald-700"></span>
-            <span>Seduto (Timer attivo)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-amber-500 border border-amber-600"></span>
-            <span>Avviso Turno (&gt; 100m)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-rose-600 border border-rose-700"></span>
-            <span>Tempo Scaduto (&gt; 120m)</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Add Table Modal */}
+      {/* Add Custom Table Modal */}
       <AddTableModal
         isOpen={isAddTableOpen}
-        onClose={() => setIsAddTableOpen(false)}
         defaultZone={addTableZone}
+        onClose={() => setIsAddTableOpen(false)}
       />
+
     </div>
   );
 };

@@ -25,12 +25,14 @@ import {
   Utensils,
   Check,
 } from 'lucide-react';
-import { RecommendedMerge, TimeSlotOption } from '../../types';
+import { RecommendedMerge, TimeSlotOption, GuestProfile, VIPTier } from '../../types';
+import { guestCrmService } from '../../services/guestCrmService';
 
 interface BookingModalProps {
   isOpen: boolean;
   onClose: () => void;
   preselectedTableIds?: string[];
+  initialGuest?: GuestProfile | null;
 }
 
 const COMMON_TAGS = [
@@ -58,6 +60,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   isOpen,
   onClose,
   preselectedTableIds,
+  initialGuest,
 }) => {
   const {
     tables,
@@ -72,6 +75,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [guestName, setGuestName] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
+  const [guestProfileId, setGuestProfileId] = useState<string | undefined>(undefined);
+  const [vipTier, setVipTier] = useState<VIPTier | undefined>(undefined);
+  const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([]);
+  const [guestSuggestions, setGuestSuggestions] = useState<GuestProfile[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [date, setDate] = useState(globalDate);
   const [startTime, setStartTime] = useState(globalTime);
   const [partySize, setPartySize] = useState<number>(2);
@@ -86,7 +94,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [nameError, setNameError] = useState(false);
   const [tableTab, setTableTab] = useState<'single' | 'merge'>('single');
 
-  // Sync date when opening modal
+  // Sync date and initialGuest when opening modal
   useEffect(() => {
     if (isOpen) {
       setDate(globalDate);
@@ -96,8 +104,44 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       setNameError(false);
       const defaultDur = calcReservationDuration(partySize, settings);
       setCustomDuration(defaultDur);
+
+      if (initialGuest) {
+        setGuestName(initialGuest.name);
+        setGuestPhone(initialGuest.phone || '');
+        setGuestEmail(initialGuest.email || '');
+        setGuestProfileId(initialGuest.id);
+        setVipTier(initialGuest.vipTier);
+        setDietaryRestrictions(initialGuest.dietaryRestrictions || []);
+        setSelectedTags((prev) => Array.from(new Set([...prev, ...initialGuest.tags])));
+        if (initialGuest.internalNotes) {
+          setNotes(initialGuest.internalNotes);
+        }
+      } else {
+        setGuestName('');
+        setGuestPhone('');
+        setGuestEmail('');
+        setGuestProfileId(undefined);
+        setVipTier(undefined);
+        setDietaryRestrictions([]);
+        setSelectedTags([]);
+        setNotes('');
+      }
     }
-  }, [isOpen, globalDate, globalTime]);
+  }, [isOpen, globalDate, globalTime, initialGuest]);
+
+  const handleSelectGuestProfile = (profile: GuestProfile) => {
+    setGuestName(profile.name);
+    setGuestPhone(profile.phone || '');
+    setGuestEmail(profile.email || '');
+    setGuestProfileId(profile.id);
+    setVipTier(profile.vipTier);
+    setDietaryRestrictions(profile.dietaryRestrictions || []);
+    setSelectedTags((prev) => Array.from(new Set([...prev, ...profile.tags])));
+    if (profile.internalNotes) {
+      setNotes((prev) => (prev ? `${prev} | ${profile.internalNotes}` : profile.internalNotes || ''));
+    }
+    setShowSuggestions(false);
+  };
 
   // Adjust duration when party size changes
   useEffect(() => {
@@ -278,19 +322,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       : `Tavolo ${selectedTableOption}`;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-hidden">
-      <div className="bg-[#FDFBF7] border-2 border-[#1E3A2F]/30 rounded-3xl max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-3 md:p-6 overflow-hidden">
+      <div className="bg-[#121622] border border-[#273248] rounded-3xl max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150 overflow-hidden text-slate-100">
         {/* 1. FIXED HEADER (Always visible) */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1E3A2F]/15 bg-[#F6F2E9]/80 shrink-0">
+        <div className="flex items-center justify-between px-6 py-3.5 border-b border-[#222A3C] bg-[#161C2A] shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#6B3FA0] text-white flex items-center justify-center font-bold shadow-xs">
-              <Utensils className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-xl bg-[#8B31E0]/20 text-[#C084FC] border border-[#8B31E0]/30 flex items-center justify-center font-bold shadow-xs">
+              <Utensils className="w-4 h-4 stroke-[1.5]" />
             </div>
             <div>
-              <h3 className="text-lg font-brand font-bold text-[#1E3A2F] leading-tight">
+              <h3 className="text-base font-semibold text-white leading-tight">
                 Nuova Prenotazione
               </h3>
-              <p className="text-[11px] text-[#1E3A2F]/70">
+              <p className="text-[11px] text-slate-400">
                 Verifica disponibilità oraria e accorpamento tavoli
               </p>
             </div>
@@ -298,9 +342,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="text-stone-400 hover:text-[#1E3A2F] p-1.5 rounded-xl hover:bg-[#1E3A2F]/10 transition"
+            className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/5 transition cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 stroke-[1.5]" />
           </button>
         </div>
 
@@ -309,27 +353,27 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           {/* Success Screen */}
           {successBookingCode ? (
             <div className="text-center py-6 space-y-4">
-              <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto shadow-sm">
-                <CheckCircle2 className="w-8 h-8" />
+              <div className="w-14 h-14 bg-[#059669]/20 text-[#34D399] border border-[#059669]/40 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                <CheckCircle2 className="w-8 h-8 stroke-[1.5]" />
               </div>
               <div className="space-y-0.5">
-                <h4 className="text-lg font-brand font-bold text-[#1E3A2F]">
+                <h4 className="text-lg font-semibold text-white">
                   Prenotazione Confermata!
                 </h4>
-                <p className="text-xs text-stone-600">
-                  Il tavolo è stato riservato e bloccato in sala.
+                <p className="text-xs text-slate-400">
+                  Il tavolo è stato riservato in sala.
                 </p>
               </div>
 
-              <div className="bg-white border-2 border-[#1E3A2F]/20 rounded-2xl p-4 max-w-sm mx-auto space-y-1.5 shadow-xs">
-                <div className="text-[10px] text-stone-500 uppercase tracking-widest font-semibold">
+              <div className="bg-[#171D2B] border border-[#273248] rounded-2xl p-4 max-w-sm mx-auto space-y-1.5 shadow-xs">
+                <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
                   Codice Prenotazione
                 </div>
-                <div className="font-mono text-2xl font-extrabold text-[#6B3FA0] tracking-wider">
+                <div className="font-mono text-2xl font-bold text-[#C084FC] tracking-wider">
                   {successBookingCode}
                 </div>
-                <div className="text-xs text-[#1E3A2F] font-medium pt-1.5 border-t border-[#1E3A2F]/10">
-                  Ospite: <strong>{guestName}</strong> ({partySize} pax) · {date} ore {startTime} - {calculatedEndTime}
+                <div className="text-xs text-slate-300 font-medium pt-1.5 border-t border-[#242C3E]">
+                  Ospite: <strong className="text-white">{guestName}</strong> ({partySize} px) · {date} ore {startTime} - {calculatedEndTime}
                 </div>
               </div>
 
@@ -341,14 +385,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     setGuestName('');
                     setNotes('');
                   }}
-                  className="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-[#1E3A2F] rounded-xl text-xs font-semibold transition"
+                  className="px-4 py-2 bg-[#171D2B] hover:bg-[#20273A] border border-[#273248] text-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer"
                 >
                   Nuova Prenotazione
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-5 py-2 bg-[#1E3A2F] hover:bg-[#152a22] text-amber-100 font-bold rounded-xl text-xs transition shadow-sm"
+                  className="px-5 py-2 bg-[#8B31E0] hover:bg-[#7928CA] text-white font-semibold rounded-xl text-xs transition shadow-sm cursor-pointer"
                 >
                   Torna alla Sala
                 </button>
@@ -357,69 +401,119 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           ) : (
             <form id="booking-form" onSubmit={handleSubmit} noValidate className="space-y-4">
               {errorMessage && (
-                <div className="p-3 bg-rose-50 border-2 border-rose-300 rounded-xl flex items-center gap-2 text-rose-800 text-xs font-bold animate-in fade-in">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <div className="p-3 bg-rose-950/40 border border-rose-800/60 rounded-xl flex items-center gap-2 text-rose-300 text-xs font-semibold animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
                   <span>{errorMessage}</span>
                 </div>
               )}
 
               {/* Step 1: Dati Ospite */}
               <div className="space-y-2">
-                <span className="text-[11px] font-bold text-[#1E3A2F] uppercase tracking-wider block">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
                   1. Dati Ospite
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#1E3A2F]/80 mb-1">
-                      Nome Ospite *
+                  <div className="relative">
+                    <label className="block text-[10px] font-medium text-slate-300 mb-1 flex items-center justify-between">
+                      <span>Nome Ospite *</span>
+                      {vipTier && (
+                        <span className="text-[9px] font-semibold text-[#C084FC] uppercase tracking-wide">
+                          {vipTier === 'top_spender' ? '💎 Top Spender' : vipTier === 'vip' ? '⭐ VIP' : ''}
+                        </span>
+                      )}
                     </label>
                     <div className="relative">
-                      <User className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-stone-400" />
+                      <User className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400 stroke-[1.5]" />
                       <input
                         type="text"
-                        placeholder="Es. Mario Rossi"
+                        placeholder="Es. Mario Rossi..."
                         value={guestName}
                         onChange={(e) => {
-                          setGuestName(e.target.value);
-                          if (e.target.value.trim()) setNameError(false);
+                          const val = e.target.value;
+                          setGuestName(val);
+                          if (val.trim()) {
+                            setNameError(false);
+                            const matches = guestCrmService.searchGuests(val);
+                            setGuestSuggestions(matches);
+                            setShowSuggestions(matches.length > 0);
+                          } else {
+                            setShowSuggestions(false);
+                          }
                         }}
-                        className={`w-full bg-white border rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-[#1E3A2F] focus:outline-none transition ${
+                        onFocus={() => {
+                          if (guestName.trim()) {
+                            const matches = guestCrmService.searchGuests(guestName);
+                            setGuestSuggestions(matches);
+                            setShowSuggestions(matches.length > 0);
+                          }
+                        }}
+                        className={`w-full bg-[#10141F] border rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white focus:outline-none transition ${
                           nameError
-                            ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/50'
-                            : 'border-[#1E3A2F]/20 focus:border-[#6B3FA0]'
+                            ? 'border-rose-500 ring-2 ring-rose-500/20'
+                            : 'border-[#273044] focus:border-[#8B31E0]'
                         }`}
                       />
                     </div>
+
+                    {/* PRERES Smart Recognition™ Autocomplete Popup */}
+                    {showSuggestions && guestSuggestions.length > 0 && (
+                      <div className="absolute left-0 right-0 top-full mt-1 bg-[#171D2B] rounded-2xl shadow-2xl border border-[#273248] py-1 z-50 max-h-48 overflow-y-auto">
+                        <div className="px-2.5 py-1 text-[9px] font-semibold uppercase text-slate-400 border-b border-[#242C3E] flex items-center justify-between">
+                          <span>PRERES Smart Recognition™</span>
+                          <span className="text-[#C084FC] font-semibold">Ospiti Riconosciuti</span>
+                        </div>
+                        {guestSuggestions.map((g) => (
+                          <button
+                            key={g.id}
+                            type="button"
+                            onClick={() => handleSelectGuestProfile(g)}
+                            className="w-full px-3 py-2 text-left hover:bg-[#8B31E0]/20 flex items-center justify-between gap-2 border-b border-[#222A3C] last:border-0 transition"
+                          >
+                            <div>
+                              <div className="font-semibold text-xs text-white flex items-center gap-1.5">
+                                <span>{g.name}</span>
+                                {g.vipTier === 'top_spender' && <span className="text-[9px] text-amber-400 font-semibold">💎 Top Spender</span>}
+                                {g.vipTier === 'vip' && <span className="text-[9px] text-[#C084FC] font-semibold">⭐ VIP</span>}
+                              </div>
+                              <div className="text-[10px] text-slate-400">
+                                {g.phone || g.email || 'Nessun recapito'} {g.dietaryRestrictions.length > 0 && `· ⚠️ ${g.dietaryRestrictions.join(', ')}`}
+                              </div>
+                            </div>
+                            <span className="text-[10px] text-[#C084FC] font-semibold">Scegli</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-[#1E3A2F]/80 mb-1">
+                    <label className="block text-[10px] font-medium text-slate-300 mb-1">
                       Telefono
                     </label>
                     <div className="relative">
-                      <Phone className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-stone-400" />
+                      <Phone className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400 stroke-[1.5]" />
                       <input
                         type="tel"
                         placeholder="+39 340 1234567"
                         value={guestPhone}
                         onChange={(e) => setGuestPhone(e.target.value)}
-                        className="w-full bg-white border border-[#1E3A2F]/20 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-[#1E3A2F] focus:outline-none focus:border-[#6B3FA0]"
+                        className="w-full bg-[#10141F] border border-[#273044] rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#8B31E0]"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-[#1E3A2F]/80 mb-1">
+                    <label className="block text-[10px] font-medium text-slate-300 mb-1">
                       Email
                     </label>
                     <div className="relative">
-                      <Mail className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-stone-400" />
+                      <Mail className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400 stroke-[1.5]" />
                       <input
                         type="email"
                         placeholder="mario@email.com"
                         value={guestEmail}
                         onChange={(e) => setGuestEmail(e.target.value)}
-                        className="w-full bg-white border border-[#1E3A2F]/20 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-[#1E3A2F] focus:outline-none focus:border-[#6B3FA0]"
+                        className="w-full bg-[#10141F] border border-[#273044] rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#8B31E0]"
                       />
                     </div>
                   </div>
@@ -427,54 +521,54 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </div>
 
               {/* Step 2: Orario e Coperti */}
-              <div className="space-y-2 pt-2 border-t border-[#1E3A2F]/10">
-                <span className="text-[11px] font-bold text-[#1E3A2F] uppercase tracking-wider block">
+              <div className="space-y-2 pt-2 border-t border-[#222A3C]">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
                   2. Orario & Coperti
                 </span>
                 <div className="grid grid-cols-3 gap-2.5">
                   <div>
-                    <label className="block text-[10px] font-bold text-[#1E3A2F]/80 mb-1">
+                    <label className="block text-[10px] font-medium text-slate-300 mb-1">
                       Data
                     </label>
                     <div className="relative">
-                      <Calendar className="w-3.5 h-3.5 absolute left-2.5 top-2 text-stone-400" />
+                      <Calendar className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400 stroke-[1.5]" />
                       <input
                         type="date"
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
-                        className="w-full bg-white border border-[#1E3A2F]/20 rounded-xl pl-8 pr-2 py-1.5 text-xs text-[#1E3A2F] focus:outline-none focus:border-[#6B3FA0] font-medium"
+                        className="w-full bg-[#10141F] border border-[#273044] rounded-xl pl-8 pr-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#8B31E0]"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-[#1E3A2F]/80 mb-1">
+                    <label className="block text-[10px] font-medium text-slate-300 mb-1">
                       Ora Inizio
                     </label>
                     <div className="relative">
-                      <Clock className="w-3.5 h-3.5 absolute left-2.5 top-2 text-stone-400" />
+                      <Clock className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400 stroke-[1.5]" />
                       <input
                         type="time"
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
-                        className="w-full bg-white border border-[#1E3A2F]/20 rounded-xl pl-8 pr-2 py-1.5 text-xs text-[#1E3A2F] font-mono-num font-bold focus:outline-none focus:border-[#6B3FA0]"
+                        className="w-full bg-[#10141F] border border-[#273044] rounded-xl pl-8 pr-2 py-1.5 text-xs text-white font-mono font-bold focus:outline-none focus:border-[#8B31E0]"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-[#1E3A2F]/80 mb-1">
+                    <label className="block text-[10px] font-medium text-slate-300 mb-1">
                       Numero Ospiti
                     </label>
                     <div className="relative">
-                      <Users className="w-3.5 h-3.5 absolute left-2.5 top-2 text-stone-400" />
+                      <Users className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400 stroke-[1.5]" />
                       <select
                         value={partySize}
                         onChange={(e) => setPartySize(Number(e.target.value))}
-                        className="w-full bg-white border border-[#1E3A2F]/20 rounded-xl pl-8 pr-2 py-1.5 text-xs text-[#1E3A2F] font-bold focus:outline-none focus:border-[#6B3FA0]"
+                        className="w-full bg-[#10141F] border border-[#273044] rounded-xl pl-8 pr-2 py-1.5 text-xs text-white font-semibold focus:outline-none focus:border-[#8B31E0]"
                       >
                         {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20].map((num) => (
-                          <option key={num} value={num}>
+                          <option key={num} value={num} className="bg-[#121622] text-white">
                             {num} {num === 1 ? 'Persona' : 'Persone'}
                           </option>
                         ))}
@@ -483,19 +577,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   </div>
                 </div>
 
-                {/* Service Shifts with Structured Slot Grids (No Horizontal Scroll) */}
-                <div className="space-y-3 pt-2">
+                {/* Service Shifts with Structured Slot Grids */}
+                <div className="space-y-2 pt-2">
                   {/* Sezione Pranzo */}
-                  <div className="bg-[#F6F2E9]/60 border border-[#1E3A2F]/15 rounded-2xl p-3 space-y-2">
+                  <div className="bg-[#171D2B] border border-[#273248] rounded-2xl p-2.5 space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-[#1E3A2F] flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                      <span className="text-[10px] font-semibold text-slate-300 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
                         <span>Pranzo (12:00 – 14:30)</span>
                       </span>
-                      <span className="text-[10px] text-[#1E3A2F]/60 font-medium">Slot ogni 15 min</span>
+                      <span className="text-[10px] text-slate-500 font-mono">Slot 15 min</span>
                     </div>
 
-                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-1">
                       {LUNCH_SLOTS.map((slot) => {
                         const isSelected = startTime === slot;
                         return (
@@ -503,10 +597,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                             key={slot}
                             type="button"
                             onClick={() => setStartTime(slot)}
-                            className={`py-1.5 px-1 rounded-xl text-xs font-mono-num font-semibold text-center transition cursor-pointer active:scale-95 ${
+                            className={`py-1.5 px-1 rounded-xl text-xs font-mono font-medium text-center transition cursor-pointer active:scale-95 ${
                               isSelected
-                                ? 'bg-[#6B3FA0] text-white shadow-sm font-bold ring-2 ring-[#6B3FA0]/30 scale-[1.02]'
-                                : 'bg-white border border-[#1E3A2F]/15 text-[#1E3A2F] hover:bg-[#1E3A2F]/5 hover:border-[#1E3A2F]/30'
+                                ? 'bg-[#8B31E0] text-white font-bold shadow-xs border border-[#A855F7]/40'
+                                : 'bg-[#10141F] border border-[#242C3E] text-slate-300 hover:border-[#8B31E0]/50'
                             }`}
                           >
                             {slot}
@@ -517,16 +611,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   </div>
 
                   {/* Sezione Cena */}
-                  <div className="bg-[#F6F2E9]/60 border border-[#1E3A2F]/15 rounded-2xl p-3 space-y-2">
+                  <div className="bg-[#171D2B] border border-[#273248] rounded-2xl p-2.5 space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-[#1E3A2F] flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                      <span className="text-[10px] font-semibold text-slate-300 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#A855F7]"></span>
                         <span>Cena (17:00 – 22:00)</span>
                       </span>
-                      <span className="text-[10px] text-[#1E3A2F]/60 font-medium">Slot ogni 15 min</span>
+                      <span className="text-[10px] text-slate-500 font-mono">Slot 15 min</span>
                     </div>
 
-                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-10 gap-1.5">
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-10 gap-1">
                       {DINNER_SLOTS.map((slot) => {
                         const isSelected = startTime === slot;
                         return (
@@ -534,10 +628,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                             key={slot}
                             type="button"
                             onClick={() => setStartTime(slot)}
-                            className={`py-1.5 px-1 rounded-xl text-xs font-mono-num font-semibold text-center transition cursor-pointer active:scale-95 ${
+                            className={`py-1.5 px-1 rounded-xl text-xs font-mono font-medium text-center transition cursor-pointer active:scale-95 ${
                               isSelected
-                                ? 'bg-[#6B3FA0] text-white shadow-sm font-bold ring-2 ring-[#6B3FA0]/30 scale-[1.02]'
-                                : 'bg-white border border-[#1E3A2F]/15 text-[#1E3A2F] hover:bg-[#1E3A2F]/5 hover:border-[#1E3A2F]/30'
+                                ? 'bg-[#8B31E0] text-white font-bold shadow-xs border border-[#A855F7]/40'
+                                : 'bg-[#10141F] border border-[#242C3E] text-slate-300 hover:border-[#8B31E0]/50'
                             }`}
                           >
                             {slot}
@@ -548,35 +642,34 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   </div>
 
                   {/* Summary bar */}
-                  <div className="flex items-center justify-between text-[11px] text-stone-600 bg-white border border-[#1E3A2F]/10 rounded-xl px-3 py-1.5 font-mono-num">
-                    <span>Durata servizio: <strong>{customDuration} min</strong> ({partySize <= 2 ? '2 ore' : '2h 45m'})</span>
-                    <span>Orario fine turno stimato: <strong className="text-[#1E3A2F]">{calculatedEndTime}</strong></span>
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 bg-[#10141F] border border-[#242C3E] rounded-xl px-3 py-1.5 font-mono">
+                    <span>Durata: <strong className="text-white">{customDuration}m</strong></span>
+                    <span>Fine stimata: <strong className="text-[#34D399]">{calculatedEndTime}</strong></span>
                   </div>
                 </div>
 
-                {/* Real-time Over-Capacity Alert if slot limit exceeded */}
+                {/* Over-Capacity Alert */}
                 {!slotCapacityValidation.isValid && (
-                  <div className="p-3 bg-rose-50 border-2 border-rose-300 rounded-xl flex items-start gap-2.5 text-rose-800 text-xs font-semibold animate-in fade-in">
-                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <div className="p-2.5 bg-rose-950/30 border border-rose-800/50 rounded-xl flex items-start gap-2 text-rose-300 text-xs font-medium animate-in fade-in">
+                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                     <div>
-                      <strong className="block text-rose-900 font-bold mb-0.5">Capienza Massima Raggiunta</strong>
-                      <span>{slotCapacityValidation.reason}</span>
+                      <strong className="block text-rose-200 font-semibold">Soglia Massima Raggiunta</strong>
+                      <span className="text-[11px]">{slotCapacityValidation.reason}</span>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Step 3: Assegnazione Tavolo (COMPACT & STREAMLINED) */}
-              <div className="space-y-2 pt-2 border-t border-[#1E3A2F]/10">
+              {/* Step 3: Assegnazione Tavolo */}
+              <div className="space-y-2 pt-2 border-t border-[#222A3C]">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-[#1E3A2F] uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#C084FC] stroke-[1.5]" />
                     <span>3. Assegnazione Tavolo</span>
                   </span>
 
-                  {/* Segmented Switcher if auto-merges are available */}
                   {recommendedMerges.length > 0 && (
-                    <div className="flex bg-[#1E3A2F]/5 p-0.5 rounded-lg text-[10px] font-bold">
+                    <div className="flex bg-[#10141F] p-0.5 rounded-lg text-[10px] font-medium border border-[#242C3E]">
                       <button
                         type="button"
                         onClick={() => {
@@ -588,8 +681,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         }}
                         className={`px-2.5 py-0.5 rounded-md transition ${
                           tableTab === 'single'
-                            ? 'bg-white text-[#1E3A2F] shadow-2xs'
-                            : 'text-[#1E3A2F]/60'
+                            ? 'bg-[#171D2B] text-white shadow-xs border border-[#273248]'
+                            : 'text-slate-400'
                         }`}
                       >
                         Tavoli Singoli ({directMatches.length + oversizedMatches.length})
@@ -605,8 +698,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         }}
                         className={`px-2.5 py-0.5 rounded-md transition ${
                           tableTab === 'merge'
-                            ? 'bg-[#1E3A2F] text-amber-200 shadow-2xs'
-                            : 'text-[#1E3A2F]/60'
+                            ? 'bg-[#8B31E0] text-white shadow-xs'
+                            : 'text-slate-400'
                         }`}
                       >
                         ✨ Accorpamenti ({recommendedMerges.length})
@@ -617,7 +710,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
                 {/* Tab: Recommended Merges */}
                 {tableTab === 'merge' && recommendedMerges.length > 0 && (
-                  <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-1 bg-amber-50/60 rounded-xl border border-amber-300">
+                  <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-1 bg-[#171D2B] rounded-xl border border-[#273248]">
                     {recommendedMerges.map((merge) => {
                       const isSelected =
                         selectedOptionType === 'auto_merge' &&
@@ -632,21 +725,21 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                           }}
                           className={`p-2 rounded-lg border cursor-pointer transition flex items-center justify-between text-xs ${
                             isSelected
-                              ? 'bg-amber-400/30 border-amber-600 ring-2 ring-amber-500 shadow-2xs font-bold'
-                              : 'bg-white border-amber-200 hover:border-amber-400'
+                              ? 'bg-[#8B31E0]/20 border-[#8B31E0] text-white font-semibold'
+                              : 'bg-[#10141F] border-[#242C3E] text-slate-300 hover:border-[#8B31E0]/40'
                           }`}
                         >
                           <div className="truncate">
-                            <div className="font-bold text-[#1E3A2F] truncate">
+                            <div className="font-semibold text-white truncate">
                               {merge.combinedName}
                             </div>
-                            <span className="text-[10px] text-stone-500">
+                            <span className="text-[10px] text-slate-400 font-mono">
                               {merge.zone.toUpperCase()} · {merge.totalCapacity} px
                             </span>
                           </div>
                           <span
-                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded ml-1 shrink-0 ${
-                              isSelected ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-900'
+                            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ml-1 shrink-0 ${
+                              isSelected ? 'bg-[#8B31E0] text-white' : 'bg-[#171D2B] text-[#C084FC]'
                             }`}
                           >
                             {isSelected ? 'Scelto ✓' : 'Scegli'}
@@ -659,7 +752,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
                 {/* Tab: Single Tables */}
                 {(tableTab === 'single' || recommendedMerges.length === 0) && (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 max-h-32 overflow-y-auto p-1 bg-white rounded-xl border border-[#1E3A2F]/15">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 max-h-32 overflow-y-auto p-1 bg-[#171D2B] rounded-xl border border-[#273248]">
                     {directMatches.map((opt) => {
                       const isSelected =
                         selectedOptionType === 'single_or_existing' && selectedTableOption === opt.tableId;
@@ -672,14 +765,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                             setSelectedTableOption(opt.tableId);
                             setSelectedMergeCandidate(null);
                           }}
-                          className={`p-1.5 rounded-lg border text-left transition flex items-center justify-between text-xs ${
+                          className={`p-1.5 rounded-lg border text-left transition flex items-center justify-between text-xs cursor-pointer ${
                             isSelected
-                              ? 'bg-[#6B3FA0]/15 border-[#6B3FA0] ring-2 ring-[#6B3FA0]/30 font-bold shadow-2xs'
-                              : 'bg-[#FBF8F2] border-[#1E3A2F]/10 hover:border-[#6B3FA0]'
+                              ? 'bg-[#8B31E0]/20 border-[#8B31E0] text-white font-semibold shadow-xs'
+                              : 'bg-[#10141F] border-[#242C3E] text-slate-300 hover:border-[#8B31E0]/40'
                           }`}
                         >
-                          <span className="truncate font-brand font-bold">{opt.tableName}</span>
-                          <span className="text-[9px] font-mono-num text-stone-500 shrink-0 ml-1">
+                          <span className="truncate font-semibold">{opt.tableName}</span>
+                          <span className="text-[9px] font-mono text-[#34D399] shrink-0 ml-1">
                             {opt.capacity}p
                           </span>
                         </button>
@@ -698,14 +791,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                             setSelectedTableOption(opt.tableId);
                             setSelectedMergeCandidate(null);
                           }}
-                          className={`p-1.5 rounded-lg border text-left transition flex items-center justify-between text-xs ${
+                          className={`p-1.5 rounded-lg border text-left transition flex items-center justify-between text-xs cursor-pointer ${
                             isSelected
-                              ? 'bg-[#6B3FA0]/15 border-[#6B3FA0] ring-2 ring-[#6B3FA0]/30 font-bold shadow-2xs'
-                              : 'bg-stone-50 border-stone-200 hover:border-stone-400'
+                              ? 'bg-[#8B31E0]/20 border-[#8B31E0] text-white font-semibold shadow-xs'
+                              : 'bg-[#10141F] border-[#242C3E] text-slate-400 hover:border-slate-500'
                           }`}
                         >
-                          <span className="truncate font-bold">{opt.tableName}</span>
-                          <span className="text-[9px] font-mono-num text-stone-400 shrink-0 ml-1">
+                          <span className="truncate font-medium">{opt.tableName}</span>
+                          <span className="text-[9px] font-mono text-slate-500 shrink-0 ml-1">
                             {opt.capacity}p
                           </span>
                         </button>
@@ -716,8 +809,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </div>
 
               {/* Step 4: Tags & Note */}
-              <div className="space-y-1.5 pt-2 border-t border-[#1E3A2F]/10">
-                <span className="text-[11px] font-bold text-[#1E3A2F] uppercase tracking-wider block">
+              <div className="space-y-1.5 pt-2 border-t border-[#222A3C]">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
                   4. Note & Esigenze (Opzionale)
                 </span>
 
@@ -729,10 +822,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         key={tag}
                         type="button"
                         onClick={() => toggleTag(tag)}
-                        className={`px-2 py-0.5 rounded text-[10px] font-medium transition ${
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
                           active
-                            ? 'bg-[#1E3A2F] text-amber-100 font-bold shadow-2xs'
-                            : 'bg-white border border-[#1E3A2F]/15 text-[#1E3A2F] hover:bg-[#1E3A2F]/5'
+                            ? 'bg-[#8B31E0] text-white font-semibold shadow-xs'
+                            : 'bg-[#10141F] border border-[#242C3E] text-slate-300 hover:border-[#8B31E0]/40'
                         }`}
                       >
                         {tag}
@@ -746,7 +839,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   placeholder="Note (es. allergie, preferenza finestra)..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full bg-white border border-[#1E3A2F]/20 rounded-xl px-3 py-1.5 text-xs text-[#1E3A2F] placeholder-stone-400 focus:outline-none focus:border-[#6B3FA0]"
+                  className="w-full bg-[#10141F] border border-[#273044] rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#8B31E0]"
                 />
               </div>
             </form>
@@ -755,27 +848,27 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
         {/* 3. FIXED FOOTER (Always visible with Submit CTA) */}
         {!successBookingCode && (
-          <div className="px-6 py-3.5 border-t border-[#1E3A2F]/15 bg-[#F6F2E9]/90 flex items-center justify-between gap-3 shrink-0">
+          <div className="px-6 py-3 border-t border-[#222A3C] bg-[#161C2A] flex items-center justify-between gap-3 shrink-0">
             <div className="text-xs">
-              <span className="text-stone-500 text-[10px] block leading-none">Assegnato:</span>
-              <strong className="text-emerald-800 font-bold">{selectedDisplayLabel}</strong>
+              <span className="text-slate-400 text-[10px] block leading-none">Assegnato:</span>
+              <strong className="text-[#34D399] font-semibold">{selectedDisplayLabel}</strong>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-stone-700 font-semibold rounded-xl text-xs transition"
+                className="px-4 py-2 bg-[#171D2B] hover:bg-[#20273A] text-slate-300 border border-[#273248] font-medium rounded-xl text-xs transition cursor-pointer"
               >
                 Annulla
               </button>
               <button
                 type="submit"
                 form="booking-form"
-                className="px-5 py-2 bg-[#6B3FA0] hover:bg-[#5A338A] text-white font-bold rounded-xl text-xs transition shadow-sm active:scale-[0.98] flex items-center gap-1.5"
+                className="px-5 py-2 bg-[#8B31E0] hover:bg-[#7928CA] text-white font-semibold rounded-xl text-xs transition shadow-md active:scale-[0.98] flex items-center gap-1.5 cursor-pointer"
               >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Conferma e Occupa Tavolo</span>
+                <CheckCircle2 className="w-4 h-4 stroke-[1.5]" />
+                <span>Conferma e Occupa</span>
               </button>
             </div>
           </div>

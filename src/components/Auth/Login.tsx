@@ -6,16 +6,20 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
+  CheckCircle2,
   UtensilsCrossed,
   ArrowRight,
+  ArrowLeft,
+  KeyRound,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 export const Login: React.FC = () => {
-  const { signIn, isAuthenticated, isLoading, error: authError, clearError } = useAuth();
+  const { signIn, resetPasswordForEmail, isAuthenticated, isLoading, error: authError, clearError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
+  const [mode, setMode] = useState<'login' | 'forgot_password'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -23,6 +27,7 @@ export const Login: React.FC = () => {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [attemptCount, setAttemptCount] = useState<number>(0);
   const [lockoutTimer, setLockoutTimer] = useState<number>(0);
+  const [recoverySent, setRecoverySent] = useState(false);
 
   const from = (location.state as any)?.from?.pathname || '/';
 
@@ -74,6 +79,17 @@ export const Login: React.FC = () => {
 
     if (lockoutTimer > 0) return;
 
+    if (mode === 'forgot_password') {
+      const isEmailValid = validateEmail(email);
+      if (!isEmailValid) return;
+
+      const res = await resetPasswordForEmail(email);
+      if (res.success) {
+        setRecoverySent(true);
+      }
+      return;
+    }
+
     const isEmailValid = validateEmail(email);
     const isPassValid = validatePassword(password);
 
@@ -98,7 +114,7 @@ export const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] flex flex-col justify-center items-center px-4 py-8 relative selection:bg-[#6B3FA0]/20 selection:text-[#1E3A2F]">
-      {/* Background Subtle Atmosphere */}
+      {/* Subtle Background Atmosphere */}
       <div className="absolute inset-0 pointer-events-none opacity-30 bg-[radial-gradient(#1E3A2F_0.8px,transparent_0.8px)] [background-size:24px_24px]"></div>
 
       {/* Main Login Card */}
@@ -113,7 +129,7 @@ export const Login: React.FC = () => {
             SOTTO SOTTO
           </h1>
           <p className="text-xs uppercase tracking-widest text-[#6B3FA0] font-bold">
-            Bar & Grill · Portale di Servizio
+            {mode === 'login' ? 'Bar & Grill · Portale di Servizio' : 'Recupero Password Account'}
           </p>
         </div>
 
@@ -122,130 +138,188 @@ export const Login: React.FC = () => {
           <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-rose-800 text-xs font-medium animate-in fade-in">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
             <div className="space-y-0.5">
-              <strong className="block text-rose-900 font-bold">Accesso non riuscito</strong>
+              <strong className="block text-rose-900 font-bold">Avviso</strong>
               <span>{authError}</span>
             </div>
           </div>
         )}
 
-        {/* Security Lockout Banner */}
-        {lockoutTimer > 0 && (
-          <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2.5 text-amber-900 text-xs font-semibold animate-pulse">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <strong className="block text-amber-950 font-bold">Accesso temporaneamente sospeso</strong>
-              <span>
-                Riprova tra <span className="font-mono-num font-bold text-amber-800">{lockoutTimer}s</span>
-              </span>
-            </div>
+        {/* Recovery Link Sent Confirmation */}
+        {recoverySent && mode === 'forgot_password' ? (
+          <div className="p-5 bg-emerald-50 border border-emerald-300 rounded-2xl text-center space-y-3 animate-in fade-in">
+            <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
+            <h3 className="font-bold text-sm text-emerald-900">Link di Recupero Inviato</h3>
+            <p className="text-xs text-emerald-800 leading-relaxed">
+              Abbiamo inviato una email a <strong className="font-semibold">{email}</strong> con il link sicuro per reimpostare la tua password.
+            </p>
+            <button
+              onClick={() => {
+                setMode('login');
+                setRecoverySent(false);
+                clearError();
+              }}
+              className="mt-2 text-xs font-bold text-[#1E3A2F] hover:underline inline-flex items-center gap-1 cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Torna alla schermata di accesso</span>
+            </button>
           </div>
+        ) : (
+          <>
+            {/* Security Lockout Banner */}
+            {lockoutTimer > 0 && (
+              <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2.5 text-amber-900 text-xs font-semibold animate-pulse">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="block text-amber-950 font-bold">Accesso temporaneamente sospeso</strong>
+                  <span>
+                    Riprova tra <span className="font-mono-num font-bold text-amber-800">{lockoutTimer}s</span>
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Main Form */}
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
+              
+              {/* Email Field */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="email"
+                  className="block text-xs font-bold text-[#1E3A2F] uppercase tracking-wider"
+                >
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 absolute left-3.5 top-3 text-stone-400" />
+                  <input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    disabled={isLoading || lockoutTimer > 0}
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (emailError) validateEmail(e.target.value);
+                    }}
+                    onBlur={() => validateEmail(email)}
+                    placeholder="nome@ristorante.it"
+                    className={`w-full bg-[#FDFBF7] border rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-[#1E3A2F] font-medium transition focus:outline-none focus:ring-2 ${
+                      emailError
+                        ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-200'
+                        : 'border-[#1E3A2F]/20 focus:border-[#6B3FA0] focus:ring-[#6B3FA0]/20'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  />
+                </div>
+                {emailError && (
+                  <p className="text-[11px] text-rose-600 font-semibold pl-1">{emailError}</p>
+                )}
+              </div>
+
+              {/* Password Field (Login Mode Only) */}
+              {mode === 'login' && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label
+                      htmlFor="password"
+                      className="block text-xs font-bold text-[#1E3A2F] uppercase tracking-wider"
+                    >
+                      Password
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('forgot_password');
+                        clearError();
+                      }}
+                      className="text-[11px] text-[#6B3FA0] hover:text-[#5A338A] font-semibold cursor-pointer"
+                    >
+                      Password dimenticata?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 absolute left-3.5 top-3 text-stone-400" />
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      disabled={isLoading || lockoutTimer > 0}
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (passwordError) validatePassword(e.target.value);
+                      }}
+                      onBlur={() => validatePassword(password)}
+                      placeholder="••••••••••••"
+                      className={`w-full bg-[#FDFBF7] border rounded-xl pl-10 pr-10 py-2.5 text-xs text-[#1E3A2F] font-medium transition focus:outline-none focus:ring-2 ${
+                        passwordError
+                          ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-200'
+                          : 'border-[#1E3A2F]/20 focus:border-[#6B3FA0] focus:ring-[#6B3FA0]/20'
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      disabled={isLoading || lockoutTimer > 0}
+                      aria-label={showPassword ? 'Nascondi password' : 'Mostra password'}
+                      className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-700 transition cursor-pointer p-0.5"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {passwordError && (
+                    <p className="text-[11px] text-rose-600 font-semibold pl-1">{passwordError}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Submit CTA */}
+              <button
+                type="submit"
+                disabled={isLoading || lockoutTimer > 0}
+                className="w-full mt-3 py-3 px-4 bg-[#1E3A2F] hover:bg-[#152921] text-amber-100 font-bold text-xs rounded-xl shadow-md transition active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {isLoading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-amber-100 border-t-transparent rounded-full animate-spin"></span>
+                    <span>Elaborazione in corso...</span>
+                  </>
+                ) : lockoutTimer > 0 ? (
+                  <span>Attendi {lockoutTimer}s</span>
+                ) : mode === 'forgot_password' ? (
+                  <>
+                    <KeyRound className="w-4 h-4" />
+                    <span>Invia Link di Recupero</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Accedi al Servizio</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+
+              {/* Back to Login Link */}
+              {mode === 'forgot_password' && (
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('login');
+                      clearError();
+                    }}
+                    className="text-xs font-semibold text-stone-500 hover:text-[#1E3A2F] inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Torna al Login</span>
+                  </button>
+                </div>
+              )}
+            </form>
+          </>
         )}
 
-        {/* Login Form */}
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
-          
-          {/* Email Field */}
-          <div className="space-y-1.5">
-            <label
-              htmlFor="email"
-              className="block text-xs font-bold text-[#1E3A2F] uppercase tracking-wider"
-            >
-              Email
-            </label>
-            <div className="relative">
-              <Mail className="w-4 h-4 absolute left-3.5 top-3 text-stone-400" />
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                disabled={isLoading || lockoutTimer > 0}
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (emailError) validateEmail(e.target.value);
-                }}
-                onBlur={() => validateEmail(email)}
-                placeholder="nome@ristorante.it"
-                className={`w-full bg-[#FDFBF7] border rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-[#1E3A2F] font-medium transition focus:outline-none focus:ring-2 ${
-                  emailError
-                    ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-200'
-                    : 'border-[#1E3A2F]/20 focus:border-[#6B3FA0] focus:ring-[#6B3FA0]/20'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              />
-            </div>
-            {emailError && (
-              <p className="text-[11px] text-rose-600 font-semibold pl-1">{emailError}</p>
-            )}
-          </div>
-
-          {/* Password Field */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label
-                htmlFor="password"
-                className="block text-xs font-bold text-[#1E3A2F] uppercase tracking-wider"
-              >
-                Password
-              </label>
-            </div>
-            <div className="relative">
-              <Lock className="w-4 h-4 absolute left-3.5 top-3 text-stone-400" />
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
-                disabled={isLoading || lockoutTimer > 0}
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (passwordError) validatePassword(e.target.value);
-                }}
-                onBlur={() => validatePassword(password)}
-                placeholder="••••••••••••"
-                className={`w-full bg-[#FDFBF7] border rounded-xl pl-10 pr-10 py-2.5 text-xs text-[#1E3A2F] font-medium transition focus:outline-none focus:ring-2 ${
-                  passwordError
-                    ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-200'
-                    : 'border-[#1E3A2F]/20 focus:border-[#6B3FA0] focus:ring-[#6B3FA0]/20'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                disabled={isLoading || lockoutTimer > 0}
-                aria-label={showPassword ? 'Nascondi password' : 'Mostra password'}
-                className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-700 transition cursor-pointer p-0.5"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            {passwordError && (
-              <p className="text-[11px] text-rose-600 font-semibold pl-1">{passwordError}</p>
-            )}
-          </div>
-
-          {/* Submit CTA */}
-          <button
-            type="submit"
-            disabled={isLoading || lockoutTimer > 0}
-            className="w-full mt-3 py-3 px-4 bg-[#1E3A2F] hover:bg-[#152921] text-amber-100 font-bold text-xs rounded-xl shadow-md transition active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-          >
-            {isLoading ? (
-              <>
-                <span className="w-4 h-4 border-2 border-amber-100 border-t-transparent rounded-full animate-spin"></span>
-                <span>Accesso in corso...</span>
-              </>
-            ) : lockoutTimer > 0 ? (
-              <span>Attendi {lockoutTimer}s</span>
-            ) : (
-              <>
-                <span>Accedi al Servizio</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
-        </form>
-
-        {/* Discreet Footer Note */}
+        {/* Footer Note */}
         <div className="pt-3 border-t border-stone-100 text-center">
           <p className="text-[11px] text-stone-400">
             Sotto Sotto Bar & Grill · Sistema Gestionale Sala

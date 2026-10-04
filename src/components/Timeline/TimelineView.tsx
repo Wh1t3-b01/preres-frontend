@@ -12,7 +12,6 @@ import {
   X,
   ArrowRight,
   ShieldAlert,
-  Zap,
 } from 'lucide-react';
 import { Reservation } from '../../types';
 
@@ -31,10 +30,9 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ onSelectTableForDeta
     setSelectedDate,
     selectedTime,
     rescheduleReservation,
-    staffRole,
   } = useRestaurant();
 
-  // Shift: Lunch (12:00 - 16:00) vs Dinner (19:00 - 00:30)
+  // Shift: Lunch (12:00 - 15:00) vs Dinner (17:00 - 23:00)
   const initialShift: ServiceShift = useMemo(() => {
     const currentM = timeToMins(selectedTime);
     return currentM >= 17 * 60 ? 'dinner' : 'lunch';
@@ -48,7 +46,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ onSelectTableForDeta
   const [proposedStartTime, setProposedStartTime] = useState<string>('');
   const [proposedTableId, setProposedTableId] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
-  const [forceOverride, setForceOverride] = useState(false);
 
   // Drag & Drop State
   const [draggedRes, setDraggedRes] = useState<Reservation | null>(null);
@@ -58,74 +55,53 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ onSelectTableForDeta
     if (activeShift === 'lunch') {
       return {
         startHour: 12,
-        endHour: 16,
+        endHour: 15,
         startMins: 12 * 60,
-        totalMins: 4 * 60, // 240 mins (12:00 - 16:00)
+        totalMins: 3 * 60,
         label: 'Pranzo',
-        timeRange: '12:00 – 16:00',
-        slots: ['12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00'],
+        timeRange: '12:00 – 15:00',
+        slots: ['12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00'],
       };
     } else {
       return {
-        startHour: 19,
-        endHour: 24.5,
-        startMins: 19 * 60,
-        totalMins: 5.5 * 60, // 330 mins (19:00 - 00:30)
+        startHour: 17,
+        endHour: 23,
+        startMins: 17 * 60,
+        totalMins: 6 * 60,
         label: 'Cena',
-        timeRange: '19:00 – 00:30',
-        slots: ['19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00', '23:30', '00:00', '00:30'],
+        timeRange: '17:00 – 23:00',
+        slots: ['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00'],
       };
     }
   }, [activeShift]);
 
-  // Active reservations for today filtered by status & shift
-  const dayReservations = useMemo(() => {
+  // Filter reservations for current day and shift
+  const dayShiftReservations = useMemo(() => {
     return reservations.filter((r) => {
-      if (r.reservationDate !== selectedDate || r.status === 'cancelled') return false;
-      if (statusFilter === 'upcoming') return r.status === 'confirmed';
-      if (statusFilter === 'seated') return r.status === 'seated';
-      if (statusFilter === 'completed') return r.status === 'completed';
+      if (r.reservationDate !== selectedDate) return false;
+      if (r.status === 'cancelled') return false;
 
-      // Check if overlaps with the active shift window
+      // Status filter
+      if (statusFilter === 'upcoming' && r.status !== 'confirmed') return false;
+      if (statusFilter === 'seated' && r.status !== 'seated') return false;
+      if (statusFilter === 'completed' && r.status !== 'completed') return false;
+
+      // Shift filter
       const resStartM = timeToMins(r.startTime);
-      const resEndM = timeToMins(r.endTime);
-      const shiftEndM = shiftConfig.startMins + shiftConfig.totalMins;
-
-      return resStartM < shiftEndM && resEndM > shiftConfig.startMins;
+      if (activeShift === 'lunch') {
+        return resStartM >= 11 * 60 && resStartM < 16 * 60;
+      } else {
+        return resStartM >= 16 * 60;
+      }
     });
-  }, [reservations, selectedDate, statusFilter, shiftConfig]);
+  }, [reservations, selectedDate, activeShift, statusFilter]);
 
-  // Current time position on active timeline
-  const currentTimeMins = timeToMins(selectedTime);
-  const isTimeInShift =
-    currentTimeMins >= shiftConfig.startMins &&
-    currentTimeMins <= shiftConfig.startMins + shiftConfig.totalMins;
-
-  const currentTimePercent = Math.max(
-    0,
-    Math.min(100, ((currentTimeMins - shiftConfig.startMins) / shiftConfig.totalMins) * 100)
-  );
-
-  // Open Time-Shift Modal
-  const handleOpenTimeShift = (res: Reservation, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setActiveShiftReservation(res);
-    setProposedStartTime(res.startTime);
-    setProposedTableId(res.tableId);
-    setForceOverride(false);
-  };
-
-  // Calculate projected end time
-  const proposedDuration = useMemo(() => {
-    if (!activeShiftReservation) return 120;
-    return activeShiftReservation.durationMins || (activeShiftReservation.partySize <= 2 ? 120 : 165);
-  }, [activeShiftReservation]);
-
+  // Compute calculated end time
   const proposedEndTime = useMemo(() => {
-    if (!proposedStartTime) return '';
-    const startM = timeToMins(proposedStartTime);
-    return minsToTime(startM + proposedDuration);
-  }, [proposedStartTime, proposedDuration]);
+    if (!activeShiftReservation || !proposedStartTime) return '';
+    const sMins = timeToMins(proposedStartTime);
+    return minsToTime(sMins + activeShiftReservation.durationMins);
+  }, [activeShiftReservation, proposedStartTime]);
 
   // Real-time slot capacity check
   const shiftValidation = useMemo(() => {
@@ -150,7 +126,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ onSelectTableForDeta
     setProposedStartTime(minsToTime(targetM));
   };
 
-  // Submit Reschedule to Backend & Realtime Sync
+  // Submit Reschedule
   const handleConfirmReschedule = async (force: boolean = false) => {
     if (!activeShiftReservation || !proposedStartTime) return;
     setIsSaving(true);
@@ -179,7 +155,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ onSelectTableForDeta
     const clickXRatio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const targetMins = shiftConfig.startMins + clickXRatio * shiftConfig.totalMins;
 
-    // Round to nearest 15-minute mark
     const roundedMins = Math.round(targetMins / 15) * 15;
     const newStartTime = minsToTime(roundedMins);
 
@@ -194,357 +169,278 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ onSelectTableForDeta
   };
 
   return (
-    <div className="space-y-6 max-w-[1780px] mx-auto pb-12">
+    <div className="space-y-5 max-w-[1780px] mx-auto pb-12 text-slate-100">
       {/* Header & Controls */}
-      <div className="bg-white border border-[#1E3A2F]/15 rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      <div className="bg-[#121622] border border-[#222A3C] rounded-2xl p-4 shadow-sm flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
         
-        {/* Title & Service Shift Segmented Switcher */}
-        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+        {/* Title & Service Shift Switcher */}
+        <div className="flex flex-wrap items-center gap-3">
           <div>
-            <h2 className="text-xl font-brand font-bold text-[#1E3A2F]">
+            <h2 className="text-lg font-semibold text-white">
               Timeline Servizio
             </h2>
-            <p className="text-xs text-[#1E3A2F]/70">
+            <p className="text-[11px] text-slate-400">
               Trascina o clicca sui blocchi per riprogrammare gli orari e cambiare tavolo
             </p>
           </div>
 
           {/* Service Shift Toggle: Pranzo vs Cena */}
-          <div className="flex items-center bg-[#1E3A2F]/5 p-1 rounded-2xl border border-[#1E3A2F]/10 text-xs font-bold shadow-2xs">
+          <div className="flex items-center bg-[#10141F] p-0.5 rounded-xl border border-[#242C3E] text-xs font-medium">
             <button
               onClick={() => setActiveShift('lunch')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeShift === 'lunch'
-                  ? 'bg-amber-400 text-amber-950 shadow-xs font-bold border border-amber-500/40'
-                  : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F] hover:bg-white/60'
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              <Sun className="w-3.5 h-3.5" />
-              <span>Pranzo (12:00 – 16:00)</span>
+              <Sun className="w-3.5 h-3.5 stroke-[1.5]" />
+              <span>Pranzo (12:00 – 15:00)</span>
             </button>
             <button
               onClick={() => setActiveShift('dinner')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeShift === 'dinner'
-                  ? 'bg-[#1E3A2F] text-amber-100 shadow-xs font-bold border border-[#1E3A2F]'
-                  : 'text-[#1E3A2F]/70 hover:text-[#1E3A2F] hover:bg-white/60'
+                  ? 'bg-[#8B31E0] text-white font-bold shadow-xs'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              <Moon className="w-3.5 h-3.5" />
-              <span>Cena (19:00 – 00:30)</span>
+              <Moon className="w-3.5 h-3.5 stroke-[1.5]" />
+              <span>Cena (17:00 – 23:00)</span>
             </button>
           </div>
         </div>
 
-        {/* Filters and Status Bar */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
-          {/* Status Filter */}
-          <div className="flex bg-[#1E3A2F]/5 p-1 rounded-xl text-xs font-semibold text-[#1E3A2F]/80">
+        {/* Right Status Filter Bar */}
+        <div className="flex items-center gap-1.5 bg-[#10141F] p-0.5 rounded-xl border border-[#242C3E] text-xs font-mono">
+          {(['all', 'upcoming', 'seated', 'completed'] as StatusFilterType[]).map((st) => (
             <button
-              onClick={() => setStatusFilter('all')}
-              className={`px-3 py-1 rounded-lg transition ${
-                statusFilter === 'all'
-                  ? 'bg-[#1E3A2F] text-amber-100 shadow-xs font-bold'
-                  : 'hover:text-[#1E3A2F]'
+              key={st}
+              onClick={() => setStatusFilter(st)}
+              className={`px-2.5 py-1 rounded-lg transition cursor-pointer capitalize ${
+                statusFilter === st
+                  ? 'bg-[#171D2B] text-white border border-[#273248] shadow-xs font-semibold'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              Tutti
+              {st === 'all' ? 'Tutti' : st === 'upcoming' ? 'In Arrivo' : st === 'seated' ? 'Seduti' : 'Completati'}
             </button>
-            <button
-              onClick={() => setStatusFilter('upcoming')}
-              className={`px-3 py-1 rounded-lg transition ${
-                statusFilter === 'upcoming'
-                  ? 'bg-[#6B3FA0] text-white shadow-xs font-bold'
-                  : 'hover:text-[#1E3A2F]'
-              }`}
-            >
-              Confermati
-            </button>
-            <button
-              onClick={() => setStatusFilter('seated')}
-              className={`px-3 py-1 rounded-lg transition ${
-                statusFilter === 'seated'
-                  ? 'bg-emerald-600 text-white shadow-xs font-bold'
-                  : 'hover:text-[#1E3A2F]'
-              }`}
-            >
-              Seduti
-            </button>
-            <button
-              onClick={() => setStatusFilter('completed')}
-              className={`px-3 py-1 rounded-lg transition ${
-                statusFilter === 'completed'
-                  ? 'bg-stone-600 text-white shadow-xs font-bold'
-                  : 'hover:text-[#1E3A2F]'
-              }`}
-            >
-              Completati
-            </button>
-          </div>
+          ))}
         </div>
       </div>
 
-      {/* Gantt Grid Container */}
-      <div className="bg-white border border-[#1E3A2F]/15 rounded-3xl shadow-xs p-4 sm:p-5 overflow-x-auto">
-        <div className="min-w-[950px] relative">
-          
-          {/* Time Header Scale */}
-          <div className="grid grid-cols-[140px_1fr] border-b border-[#1E3A2F]/20 pb-2.5">
-            <div className="text-xs font-bold text-[#1E3A2F] uppercase tracking-wider pl-2 flex items-center gap-1.5">
-              <span>Tavolo</span>
-              <span className="text-[10px] text-stone-400 font-normal">/ Max Px</span>
-            </div>
-            <div
-              className="grid relative text-[10px] font-mono-num text-stone-500 font-semibold"
-              style={{ gridTemplateColumns: `repeat(${shiftConfig.slots.length}, 1fr)` }}
-            >
-              {shiftConfig.slots.map((hour, idx) => (
-                <div key={hour} className="text-left border-l border-stone-200/80 pl-1.5">
-                  <span className={idx % 2 === 0 ? 'font-bold text-stone-800' : 'text-stone-400'}>
-                    {hour}
-                  </span>
-                </div>
-              ))}
-            </div>
+      {/* TIMELINE GRID CONTAINER */}
+      <div className="bg-[#121622] border border-[#222A3C] rounded-2xl shadow-sm overflow-hidden flex flex-col">
+        {/* Timeline Header Hour Track */}
+        <div className="flex border-b border-[#222A3C] bg-[#161C2A] text-[10px] text-slate-400 font-mono select-none">
+          <div className="w-36 sm:w-44 p-2.5 font-bold uppercase tracking-wider text-slate-300 border-r border-[#222A3C] shrink-0">
+            Tavolo & Capienza
           </div>
-
-          {/* Table Rows */}
-          <div className="divide-y divide-stone-100 relative">
-            
-            {/* Live Time Red Line Indicator */}
-            {isTimeInShift && (
+          <div className="flex-1 relative flex">
+            {shiftConfig.slots.map((slotTime, idx) => (
               <div
-                className="absolute top-0 bottom-0 z-20 w-0.5 bg-rose-500 shadow-sm pointer-events-none"
-                style={{ left: `calc(140px + (100% - 140px) * ${currentTimePercent / 100})` }}
+                key={slotTime}
+                className="flex-1 text-center py-2 border-r border-[#222A3C]/40 last:border-r-0 truncate"
               >
-                <div className="sticky top-0 -ml-6 bg-rose-500 text-white font-mono-num font-bold text-[9px] px-2 py-0.5 rounded-full shadow-md flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
-                  <span>{selectedTime}</span>
-                </div>
+                {slotTime}
               </div>
-            )}
+            ))}
+          </div>
+        </div>
 
-            {tables.map((table) => {
-              const tableRes = dayReservations.filter(
-                (r) =>
-                  r.tableId === table.id ||
-                  (r.assignedTableIds && r.assignedTableIds.includes(table.id))
-              );
+        {/* Table Rows */}
+        <div className="divide-y divide-[#202738] overflow-y-auto max-h-[600px]">
+          {tables.map((table) => {
+            const tableReservations = dayShiftReservations.filter(
+              (r) =>
+                r.tableId === table.id || (r.assignedTableIds && r.assignedTableIds.includes(table.id))
+            );
 
-              return (
+            return (
+              <div key={table.id} className="flex hover:bg-[#151A26] transition-colors group">
+                {/* Table Info Left Cell */}
                 <div
-                  key={table.id}
-                  className="grid grid-cols-[140px_1fr] items-center py-2.5 hover:bg-[#FBF8F2]/80 transition group"
+                  onClick={() => onSelectTableForDetails(table.id)}
+                  className="w-36 sm:w-44 p-2.5 border-r border-[#222A3C] flex items-center justify-between shrink-0 cursor-pointer bg-[#10141F]/40 group-hover:bg-[#171D2B]"
                 >
-                  {/* Table Label */}
-                  <div
-                    onClick={() => onSelectTableForDetails(table.id)}
-                    className="flex items-center justify-between pr-3 pl-2 cursor-pointer select-none"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#1E3A2F]/30 group-hover:bg-[#6B3FA0] transition"></span>
-                      <span className="font-bold text-xs text-[#1E3A2F] group-hover:text-[#6B3FA0]">
-                        {table.tableNumber}
-                      </span>
-                    </div>
-                    <span className="text-[10px] bg-stone-100 border border-stone-200 text-stone-600 font-mono-num px-1.5 py-0.5 rounded-md font-semibold">
-                      {table.capacityOverride || table.capacity} px
+                  <div className="truncate">
+                    <span className="font-bold text-xs text-white block truncate">
+                      {table.name || `Tavolo ${table.tableNumber}`}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      Zona {table.zone.toUpperCase()} · {table.capacityOverride || table.capacity} pax
                     </span>
                   </div>
+                  <Users className="w-3.5 h-3.5 text-slate-500 shrink-0 stroke-[1.5]" />
+                </div>
 
-                  {/* Horizontal Timeline Track (Drop Target) */}
-                  <div
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => handleTrackDrop(e, table.id)}
-                    className="relative h-11 bg-stone-50/90 rounded-xl border border-stone-200/80 overflow-hidden"
-                  >
-                    {/* Hour grid lines */}
-                    <div
-                      className="absolute inset-0 grid pointer-events-none"
-                      style={{ gridTemplateColumns: `repeat(${shiftConfig.slots.length}, 1fr)` }}
-                    >
-                      {shiftConfig.slots.map((_, i) => (
-                        <div
-                          key={i}
-                          className={`border-l h-full ${
-                            i % 2 === 0 ? 'border-stone-200/80' : 'border-stone-100'
-                          }`}
-                        />
-                      ))}
-                    </div>
+                {/* Time Track Visual Area */}
+                <div
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => handleTrackDrop(e, table.id)}
+                  className="flex-1 relative h-12 bg-[#0B0E17]/60"
+                  style={{
+                    backgroundImage:
+                      'linear-gradient(to right, rgba(36, 44, 62, 0.4) 1px, transparent 1px)',
+                    backgroundSize: `${100 / (shiftConfig.slots.length - 1)}% 100%`,
+                  }}
+                >
+                  {/* Reservation Blocks on Track */}
+                  {tableReservations.map((res) => {
+                    const resStartM = timeToMins(res.startTime);
+                    const resEndM = timeToMins(res.endTime);
 
-                    {/* Booking Blocks (Interactive Drag & Click Blocks) */}
-                    {tableRes.map((r) => {
-                      const startM = timeToMins(r.startTime);
-                      const endM = timeToMins(r.endTime);
+                    const startOffset = Math.max(0, resStartM - shiftConfig.startMins);
+                    const durationMins = Math.max(30, resEndM - resStartM);
 
-                      const leftPercent = Math.max(
-                        0,
-                        ((startM - shiftConfig.startMins) / shiftConfig.totalMins) * 100
-                      );
-                      const widthPercent = Math.min(
-                        100 - leftPercent,
-                        ((endM - startM) / shiftConfig.totalMins) * 100
-                      );
+                    const leftPercent = Math.max(
+                      0,
+                      Math.min(100, (startOffset / shiftConfig.totalMins) * 100)
+                    );
+                    const widthPercent = Math.max(
+                      5,
+                      Math.min(100 - leftPercent, (durationMins / shiftConfig.totalMins) * 100)
+                    );
 
-                      if (widthPercent <= 0 || leftPercent >= 100) return null;
+                    const isSeated = res.status === 'seated';
+                    const isCompleted = res.status === 'completed';
 
-                      const isSeated = r.status === 'seated';
-                      const isCompleted = r.status === 'completed';
-
-                      return (
-                        <div
-                          key={r.id}
-                          draggable
-                          onDragStart={() => setDraggedRes(r)}
-                          onClick={(e) => handleOpenTimeShift(r, e)}
-                          title={`${r.guestName} (${r.partySize} px) · ${r.startTime} - ${r.endTime} — Trascina per spostare o clicca per modificare`}
-                          className={`absolute top-1 bottom-1 rounded-lg px-2.5 flex items-center justify-between text-[11px] font-semibold text-white shadow-xs cursor-grab active:cursor-grabbing truncate transition-all duration-150 hover:scale-[1.01] hover:brightness-110 z-10 select-none ${
-                            isSeated
-                              ? 'bg-emerald-600 border border-emerald-700 ring-1 ring-emerald-400/40'
-                              : isCompleted
-                              ? 'bg-stone-500 border border-stone-600 opacity-70'
-                              : 'bg-[#6B3FA0] border border-[#5A338A]'
-                          }`}
-                          style={{
-                            left: `${leftPercent}%`,
-                            width: `${Math.max(4, widthPercent)}%`,
-                          }}
-                        >
-                          <span className="truncate font-bold">
-                            {r.guestName} ({r.partySize}p)
+                    return (
+                      <div
+                        key={res.id}
+                        draggable
+                        onDragStart={() => setDraggedRes(res)}
+                        onClick={() => {
+                          setActiveShiftReservation(res);
+                          setProposedStartTime(res.startTime);
+                          setProposedTableId(res.tableId);
+                        }}
+                        className={`absolute top-1 bottom-1 rounded-xl p-1.5 text-xs flex items-center justify-between overflow-hidden shadow-xs cursor-grab active:cursor-grabbing transition-all hover:scale-[1.02] hover:z-20 border ${
+                          isSeated
+                            ? 'bg-[#059669]/25 border-[#059669]/60 text-white shadow-[0_0_12px_rgba(5,150,105,0.2)]'
+                            : isCompleted
+                            ? 'bg-slate-800/80 border-slate-700 text-slate-400'
+                            : 'bg-[#8B31E0]/25 border-[#8B31E0]/60 text-white shadow-[0_0_12px_rgba(139,49,224,0.2)]'
+                        }`}
+                        style={{
+                          left: `${leftPercent}%`,
+                          width: `${widthPercent}%`,
+                        }}
+                      >
+                        <div className="truncate flex items-center gap-1 leading-none">
+                          <span className="font-semibold text-[11px] truncate">
+                            {res.guestName}
                           </span>
-                          <span className="hidden sm:inline font-mono-num text-[10px] opacity-90 pl-1">
-                            {r.startTime}
+                          <span className="text-[9px] font-mono text-slate-300 shrink-0">
+                            ({res.partySize}p)
                           </span>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <span className="text-[9px] font-mono shrink-0 ml-1 font-semibold">
+                          {res.startTime}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* QUICK RESCHEDULE MODAL (With Manager Override) */}
+      {/* RESCHEDULE / TIME-SHIFT MODAL */}
       {activeShiftReservation && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-stone-200 space-y-5 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-[#121622] border border-[#273248] rounded-2xl p-5 max-w-md w-full shadow-2xl space-y-4 text-slate-100">
+            <div className="flex items-center justify-between pb-3 border-b border-[#222A3C]">
               <div>
-                <h3 className="text-lg font-brand font-bold text-[#1E3A2F]">
-                  Riprogramma Orario & Tavolo
+                <h3 className="text-base font-semibold text-white">
+                  Riprogramma Orario / Tavolo
                 </h3>
-                <p className="text-xs text-stone-500">
-                  {activeShiftReservation.guestName} · {activeShiftReservation.partySize} Ospiti (Codice: {activeShiftReservation.bookingCode})
+                <p className="text-xs text-slate-400 font-medium">
+                  {activeShiftReservation.guestName} ({activeShiftReservation.partySize} pax)
                 </p>
               </div>
               <button
                 onClick={() => setActiveShiftReservation(null)}
-                className="p-1 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100"
+                className="text-slate-400 hover:text-white p-1 rounded-lg"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 stroke-[1.5]" />
               </button>
             </div>
 
-            {/* Shift & Time Controls */}
-            <div className="space-y-4">
+            <div className="space-y-3 text-xs">
+              {/* Time Stepper */}
               <div>
-                <label className="block text-xs font-bold text-[#1E3A2F] uppercase tracking-wider mb-2">
-                  Orario di Inizio:
+                <label className="block text-[10px] font-medium text-slate-300 mb-1">
+                  Orario Inizio Servizio
                 </label>
-                <div className="flex items-center justify-between gap-2 bg-[#FDFBF7] border border-[#1E3A2F]/20 p-2 rounded-2xl">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleShiftMinutes(-15)}
-                    className="px-3 py-2 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl font-bold text-xs text-[#1E3A2F] shadow-2xs cursor-pointer active:scale-95"
+                    className="px-3 py-1.5 bg-[#171D2B] hover:bg-[#20273A] border border-[#273248] text-slate-200 rounded-xl font-mono text-xs cursor-pointer"
                   >
-                    - 15 min
+                    -15m
                   </button>
-
-                  <div className="text-center font-mono-num font-bold text-xl text-[#1E3A2F]">
-                    {proposedStartTime}
-                    <span className="text-xs font-normal text-stone-500 block">
-                      Fine: {proposedEndTime} ({proposedDuration} min)
-                    </span>
-                  </div>
-
+                  <input
+                    type="time"
+                    value={proposedStartTime}
+                    onChange={(e) => setProposedStartTime(e.target.value)}
+                    className="flex-1 bg-[#10141F] border border-[#242C3E] rounded-xl px-3 py-1.5 text-center font-mono font-bold text-sm text-white focus:outline-none focus:border-[#8B31E0]"
+                  />
                   <button
                     onClick={() => handleShiftMinutes(15)}
-                    className="px-3 py-2 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl font-bold text-xs text-[#1E3A2F] shadow-2xs cursor-pointer active:scale-95"
+                    className="px-3 py-1.5 bg-[#171D2B] hover:bg-[#20273A] border border-[#273248] text-slate-200 rounded-xl font-mono text-xs cursor-pointer"
                   >
-                    + 15 min
+                    +15m
                   </button>
                 </div>
               </div>
 
-              {/* Table Assignment Selector */}
+              {/* Table Switcher */}
               <div>
-                <label className="block text-xs font-bold text-[#1E3A2F] uppercase tracking-wider mb-2">
-                  Tavolo Assegnato:
+                <label className="block text-[10px] font-medium text-slate-300 mb-1">
+                  Tavolo Assegnato
                 </label>
                 <select
                   value={proposedTableId}
                   onChange={(e) => setProposedTableId(e.target.value)}
-                  className="w-full bg-[#FDFBF7] border border-[#1E3A2F]/20 rounded-xl px-3 py-2 text-xs font-semibold text-[#1E3A2F] focus:outline-none cursor-pointer"
+                  className="w-full bg-[#10141F] border border-[#242C3E] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#8B31E0] cursor-pointer"
                 >
                   {tables.map((t) => (
                     <option key={t.id} value={t.id}>
-                      Tavolo {t.tableNumber} ({t.zone.toUpperCase()} · max {t.capacityOverride || t.capacity} px)
+                      Tavolo {t.tableNumber} ({t.capacityOverride || t.capacity} pax) · Zona {t.zone.toUpperCase()}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Capacity Limit Validation Banner */}
-              {!shiftValidation.isValid && (
-                <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-2xl text-xs space-y-2">
-                  <div className="flex items-start gap-2 text-amber-900 font-semibold">
-                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                    <span>{shiftValidation.reason}</span>
-                  </div>
-                  {staffRole === 'manager' && (
-                    <p className="text-[11px] text-amber-800 italic">
-                      In qualità di <strong>Manager</strong> puoi forzare l'assegnazione scavalcando il limite standard.
-                    </p>
-                  )}
-                </div>
-              )}
+              {/* Summary */}
+              <div className="p-2.5 bg-[#10141F] border border-[#242C3E] rounded-xl text-[11px] text-slate-300 font-mono flex items-center justify-between">
+                <span>Orario: {proposedStartTime} – {proposedEndTime}</span>
+                <span className="text-[#34D399] font-bold">Durata: {activeShiftReservation.durationMins}m</span>
+              </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-stone-100">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#222A3C]">
               <button
                 onClick={() => setActiveShiftReservation(null)}
-                className="px-4 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900"
+                className="px-3.5 py-1.5 text-slate-400 hover:text-white"
               >
                 Annulla
               </button>
-
-              {!shiftValidation.isValid && staffRole === 'manager' ? (
-                <button
-                  onClick={() => handleConfirmReschedule(true)}
-                  disabled={isSaving}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-md transition active:scale-95 cursor-pointer"
-                >
-                  <Zap className="w-4 h-4" />
-                  <span>{isSaving ? 'Salvataggio...' : '⚡ Forza Spostamento (Manager)'}</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleConfirmReschedule(false)}
-                  disabled={isSaving || !shiftValidation.isValid}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-[#1E3A2F] hover:bg-[#152921] text-amber-100 rounded-xl text-xs font-bold shadow-md transition active:scale-95 disabled:opacity-50 cursor-pointer"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>{isSaving ? 'Salvataggio...' : 'Conferma Nuovo Orario'}</span>
-                </button>
-              )}
+              <button
+                disabled={isSaving}
+                onClick={() => handleConfirmReschedule(false)}
+                className="px-4 py-1.5 bg-[#8B31E0] hover:bg-[#7928CA] text-white font-semibold rounded-xl text-xs shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                {isSaving ? 'Salvataggio...' : 'Conferma Modifica'}
+              </button>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 };

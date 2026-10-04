@@ -48,6 +48,8 @@ interface RestaurantContextType {
   updateTableDetails: (tableId: string, updates: Partial<RestaurantTable>) => void;
   addCustomTable: (table: Partial<RestaurantTable>) => void;
   removeCustomTable: (tableId: string) => void;
+  toggleTableBlock: (tableId: string, reason?: string) => void;
+  transferTable: (fromTableId: string, toTableId: string, reservationId: string) => boolean;
   
   // Course Stages & Service Call
   setTableCourseStage: (tableId: string, stage: TableCourseStage) => void;
@@ -153,7 +155,10 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          const hasNewZones = parsed.some((t: any) => t.zone === 'main_a' || t.zone === 'main_b');
+          if (hasNewZones) {
+            return parsed;
+          }
         }
       } catch (e) {
         console.error('Failed to parse saved tables', e);
@@ -175,20 +180,20 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     return DEFAULT_SETTINGS;
   });
 
-  // Reservations, Groups & Waitlist State
+  // Reservations, Groups & Waitlist State (Strictly real data from Supabase/Server)
   const [reservations, setReservations] = useState<Reservation[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.RESERVATIONS);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       } catch (e) {
         console.error('Failed to parse saved reservations', e);
       }
     }
-    return getInitialSeedData().reservations;
+    return [];
   });
 
   const [tableGroups, setTableGroups] = useState<TableGroup[]>(() => {
@@ -196,14 +201,14 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       } catch (e) {
         console.error('Failed to parse saved groups', e);
       }
     }
-    return getInitialSeedData().tableGroups;
+    return [];
   });
 
   const [waitlist, setWaitlist] = useState<WaitlistItem[]>(() => {
@@ -211,28 +216,22 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       } catch (e) {
         console.error('Failed to parse saved waitlist', e);
       }
     }
-    return getInitialSeedData().waitlist;
+    return [];
   });
 
-  // Self-Healing fallback if state is empty
+  // Self-Healing fallback for physical tables layout
   useEffect(() => {
     if (!tables || tables.length === 0) {
       setTables(DEFAULT_TABLES);
     }
   }, [tables]);
-
-  useEffect(() => {
-    if (!reservations || reservations.length === 0) {
-      setReservations(getInitialSeedData().reservations);
-    }
-  }, [reservations]);
 
   // Sync to LocalStorage
   useEffect(() => {
@@ -263,16 +262,8 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   useEffect(() => {
     // 1. Fetch remote reservations from Supabase / Render
     reservationService.fetchReservations().then((remoteRes) => {
-      if (Array.isArray(remoteRes) && remoteRes.length > 0) {
-        setReservations((prev) => {
-          const idMap = new Map();
-          // Prefer remote Supabase records
-          [...prev, ...remoteRes].forEach((r) => {
-            const key = r.bookingCode || r.id;
-            idMap.set(key, r);
-          });
-          return Array.from(idMap.values());
-        });
+      if (Array.isArray(remoteRes)) {
+        setReservations(remoteRes);
       }
     });
 
@@ -441,12 +432,20 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     const turnoverRate = totalCapacity > 0 ? Number((bookedCovers / totalCapacity).toFixed(2)) : 0;
     const estimatedTotalRevenue = bookedCovers * (settings.avgSpendPerCover || 65);
 
+    const occupiedTablesCount = dayRes.filter((r) => r.status === 'seated').length;
+    const totalTablesCount = tables.length;
+    const occupancyPercentage =
+      totalTablesCount > 0 ? Math.round((occupiedTablesCount / totalTablesCount) * 100) : 0;
+
     return {
       bookedCovers,
       seatedCovers,
       completedCovers,
       remainingCovers,
       totalReservationsCount: dayRes.length,
+      occupiedTablesCount,
+      totalTablesCount,
+      occupancyPercentage,
       turnoverRate,
       estimatedTotalRevenue,
     };
@@ -550,6 +549,66 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       title: 'Tavolo Eliminato',
       message: `Tavolo ${tableId} rimosso con successo dalla sala.`,
     });
+  }, [addToast]);
+
+  // Resy-style Table Block / Hold
+  const toggleTableBlock = useCallback((tableId: string, reason?: string) => {
+    setTables((prev) => {
+      const updated = prev.map((t) => {
+        if (t.id === tableId || t.tableNumber === tableId) {
+          const nextBlocked = !t.isBlocked;
+          return {
+            ...t,
+            isBlocked: nextBlocked,
+            blockedReason: nextBlocked ? reason || 'Bloccato / Riservato Maître' : undefined,
+          };
+        }
+        return t;
+      });
+      realtimeSync.broadcast({ type: 'TABLES_UPDATED', payload: updated });
+      return updated;
+    });
+
+    const target = tables.find((t) => t.id === tableId);
+    const willBlock = !target?.isBlocked;
+    addToast({
+      type: willBlock ? 'warning' : 'success',
+      title: willBlock ? `Tavolo ${tableId} Bloccato` : `Tavolo ${tableId} Sbloccato`,
+      message: willBlock
+        ? `Tavolo trattenuto: ${reason || 'Riserva Direzione'}`
+        : 'Tavolo di nuovo disponibile per prenotazioni e walk-in.',
+    });
+  }, [tables, addToast]);
+
+  // Resy-style Table Transfer / Move Seated Party
+  const transferTable = useCallback((fromTableId: string, toTableId: string, reservationId: string) => {
+    let movedReservation: Reservation | undefined;
+
+    setReservations((prev) => {
+      const updated = prev.map((r) => {
+        if (r.id === reservationId || r.bookingCode === reservationId) {
+          movedReservation = {
+            ...r,
+            tableId: toTableId,
+            assignedTableIds: [toTableId],
+          };
+          return movedReservation;
+        }
+        return r;
+      });
+      realtimeSync.broadcast({ type: 'RESERVATION_UPDATED', payload: updated });
+      return updated;
+    });
+
+    if (movedReservation) {
+      addToast({
+        type: 'success',
+        title: 'Tavolo Trasferito con Successo',
+        message: `${(movedReservation as any).guestName} spostato da Tavolo ${fromTableId} a Tavolo ${toTableId}.`,
+      });
+      return true;
+    }
+    return false;
   }, [addToast]);
 
   // Course Stages & Service Calls (For Waiter view)
@@ -1226,6 +1285,8 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
         updateTableDetails,
         addCustomTable,
         removeCustomTable,
+        toggleTableBlock,
+        transferTable,
         setTableCourseStage,
         setTableAssistance,
         createReservation,

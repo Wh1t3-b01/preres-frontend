@@ -15,10 +15,12 @@ import {
   ArrowUpDown,
   Filter,
   DollarSign,
+  BarChart3,
+  Sparkles,
 } from 'lucide-react';
 
 export const StatsOverview: React.FC = () => {
-  const { tables, reservations, tableGroups, selectedDate, settings } = useRestaurant();
+  const { tables, reservations, selectedDate, settings } = useRestaurant();
 
   const [zoneFilter, setZoneFilter] = useState<'all' | 'main' | 'bar' | 'private'>('all');
   const [sortBy, setSortBy] = useState<'turns' | 'covers' | 'revenue' | 'table'>('turns');
@@ -46,11 +48,6 @@ export const StatsOverview: React.FC = () => {
     (sum, r) => sum + (r.totalSpendEstimate || r.partySize * (settings.avgSpendPerCover || 65)),
     0
   );
-
-  const avgPartySize =
-    activeReservations.length > 0
-      ? (totalCovers / activeReservations.length).toFixed(1)
-      : '0';
 
   // Compute Table-by-Table Turnover & Performance Metrics
   const tableTurnoverList = useMemo(() => {
@@ -112,12 +109,12 @@ export const StatsOverview: React.FC = () => {
   const zoneStats = useMemo(() => {
     const zones = {
       bar: { label: 'Zona Bar', capacity: 0, bookedCovers: 0, tablesCount: 0 },
-      main: { label: 'Sala Principale', capacity: 0, bookedCovers: 0, tablesCount: 0 },
+      main: { label: 'Sale Principali (A & B)', capacity: 0, bookedCovers: 0, tablesCount: 0 },
       private: { label: 'Sala Privata', capacity: 0, bookedCovers: 0, tablesCount: 0 },
     };
 
     tables.forEach((t) => {
-      const z = t.zone as 'bar' | 'main' | 'private';
+      const z = t.zone === 'main_a' || t.zone === 'main_b' || t.zone === 'main' ? 'main' : (t.zone as 'bar' | 'private');
       if (zones[z]) {
         zones[z].capacity += t.capacityOverride || t.capacity;
         zones[z].tablesCount += 1;
@@ -126,9 +123,13 @@ export const StatsOverview: React.FC = () => {
 
     activeReservations.forEach((r) => {
       const primaryTable = tables.find((t) => t.id === r.tableId);
-      const z = primaryTable ? (primaryTable.zone as 'bar' | 'main' | 'private') : 'main';
-      if (zones[z]) {
-        zones[z].bookedCovers += r.partySize;
+      const zoneKey = primaryTable
+        ? (primaryTable.zone === 'main_a' || primaryTable.zone === 'main_b' || primaryTable.zone === 'main'
+            ? 'main'
+            : (primaryTable.zone as 'bar' | 'private'))
+        : 'main';
+      if (zones[zoneKey]) {
+        zones[zoneKey].bookedCovers += r.partySize;
       }
     });
 
@@ -156,102 +157,108 @@ export const StatsOverview: React.FC = () => {
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(exportObj, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `report_rotazione_tavoli_${selectedDate}.json`);
+    downloadAnchor.setAttribute('download', `preres_report_rotazione_${selectedDate}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
   };
 
   return (
-    <div className="space-y-6 max-w-[1700px] mx-auto pb-12">
+    <div className="space-y-6 max-w-[1780px] mx-auto pb-16 text-slate-100">
+      
       {/* Header */}
-      <div className="bg-white border border-[#1E3A2F]/15 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-[#10141F] border border-[#222A3C] rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-brand font-bold text-[#1E3A2F]">
-            Analisi Rotazione Tavoli & Performance Coperti ({selectedDate})
-          </h2>
-          <p className="text-xs text-[#1E3A2F]/70">
-            Monitora quanti turni e coperti ha generato ogni singolo tavolo nella giornata
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-brand font-bold text-white">
+              PRERES Analytics & Rendimento Turni ({selectedDate})
+            </h2>
+            <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-[#8B31E0]/20 text-[#C084FC] border border-[#8B31E0]/30">
+              Live RevPASH
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">
+            Analisi dettagliata di rotazione per tavolo, saturazione oraria e performance economica del servizio.
           </p>
         </div>
 
         <button
           onClick={handleExportData}
-          className="flex items-center gap-2 px-4 py-2 bg-[#1E3A2F] text-amber-100 hover:bg-[#152a22] font-semibold text-xs rounded-xl transition shadow-xs"
+          className="flex items-center gap-2 px-4 py-2 bg-[#171D2B] hover:bg-[#222A3C] text-slate-200 border border-[#273248] font-semibold text-xs rounded-xl transition shadow-xs cursor-pointer"
         >
-          <Download className="w-4 h-4" />
-          <span>Esporta Report Rotazione (JSON)</span>
+          <Download className="w-4 h-4 text-[#C084FC]" />
+          <span>Esporta Report JSON</span>
         </button>
       </div>
 
       {/* 4 Top KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1 */}
-        <div className="bg-white border border-[#1E3A2F]/15 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+        <div className="bg-[#121622] border border-[#222A3C] rounded-2xl p-4 sm:p-5 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs text-stone-500 font-medium">Coperti Totali di Oggi</span>
-            <div className="text-2xl font-brand font-bold text-[#1E3A2F] mt-1 font-mono-num">
+            <span className="text-xs text-slate-400 font-medium">Coperti Totali di Oggi</span>
+            <div className="text-2xl font-brand font-bold text-white mt-1 font-mono">
               {totalCovers} px
             </div>
-            <span className="text-[11px] text-stone-400">su {activeReservations.length} prenotazioni</span>
+            <span className="text-[11px] text-slate-500">su {activeReservations.length} prenotazioni</span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-[#6B3FA0]/10 text-[#6B3FA0] flex items-center justify-center font-bold">
-            <Users className="w-6 h-6" />
+          <div className="w-11 h-11 rounded-2xl bg-[#8B31E0]/20 text-[#C084FC] border border-[#8B31E0]/30 flex items-center justify-center font-bold">
+            <Users className="w-5 h-5 stroke-[1.5]" />
           </div>
         </div>
 
         {/* KPI 2: Indice Rotazione Media */}
-        <div className="bg-white border border-[#1E3A2F]/15 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+        <div className="bg-[#121622] border border-[#222A3C] rounded-2xl p-4 sm:p-5 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs text-stone-500 font-medium">Rotazione Media Tavoli</span>
-            <div className="text-2xl font-brand font-bold text-amber-800 mt-1 font-mono-num">
+            <span className="text-xs text-slate-400 font-medium">Rotazione Media Tavoli</span>
+            <div className="text-2xl font-brand font-bold text-amber-300 mt-1 font-mono">
               {avgTableTurns}x
             </div>
-            <span className="text-[11px] text-stone-400">giri medi per tavolo</span>
+            <span className="text-[11px] text-slate-500">giri medi per tavolo</span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-900 flex items-center justify-center font-bold">
-            <RefreshCw className="w-6 h-6" />
+          <div className="w-11 h-11 rounded-2xl bg-amber-950/40 text-amber-300 border border-amber-500/40 flex items-center justify-center font-bold">
+            <RefreshCw className="w-5 h-5 stroke-[1.5]" />
           </div>
         </div>
 
         {/* KPI 3 */}
-        <div className="bg-white border border-[#1E3A2F]/15 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+        <div className="bg-[#121622] border border-[#222A3C] rounded-2xl p-4 sm:p-5 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs text-stone-500 font-medium">Incasso Stimato Coperti</span>
-            <div className="text-2xl font-brand font-bold text-emerald-800 mt-1 font-mono-num">
-              {totalEstimatedRevenue.toLocaleString('it-IT')} €
+            <span className="text-xs text-slate-400 font-medium">Incasso Stimato Coperti</span>
+            <div className="text-2xl font-brand font-bold text-[#34D399] mt-1 font-mono">
+              € {totalEstimatedRevenue.toLocaleString('it-IT')}
             </div>
-            <span className="text-[11px] text-emerald-600">€{settings.avgSpendPerCover || 65} / persona</span>
+            <span className="text-[11px] text-emerald-400/80 font-mono">€{settings.avgSpendPerCover || 65} / persona</span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-            <DollarSign className="w-6 h-6" />
+          <div className="w-11 h-11 rounded-2xl bg-[#059669]/20 text-[#34D399] border border-[#059669]/40 flex items-center justify-center font-bold">
+            <DollarSign className="w-5 h-5 stroke-[1.5]" />
           </div>
         </div>
 
         {/* KPI 4 */}
-        <div className="bg-white border border-[#1E3A2F]/15 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+        <div className="bg-[#121622] border border-[#222A3C] rounded-2xl p-4 sm:p-5 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs text-stone-500 font-medium">Capienza & Coperti Seduti</span>
-            <div className="text-2xl font-brand font-bold text-[#1E3A2F] mt-1 font-mono-num">
+            <span className="text-xs text-slate-400 font-medium">Capienza & Seduti Ora</span>
+            <div className="text-2xl font-brand font-bold text-[#C084FC] mt-1 font-mono">
               {seatedCovers} / {totalCapacity} px
             </div>
-            <span className="text-[11px] text-stone-400">seduti ora in sala</span>
+            <span className="text-[11px] text-slate-500">{completedCovers} completati</span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold">
-            <Utensils className="w-6 h-6" />
+          <div className="w-11 h-11 rounded-2xl bg-indigo-950/40 text-indigo-300 border border-indigo-500/40 flex items-center justify-center font-bold">
+            <Utensils className="w-5 h-5 stroke-[1.5]" />
           </div>
         </div>
       </div>
 
       {/* DEDICATED TABLE TURNOVER & COVERS YIELD REPORT */}
-      <div className="bg-white border border-[#1E3A2F]/15 rounded-2xl p-5 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-stone-100 pb-3">
+      <div className="bg-[#10141F] border border-[#222A3C] rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#222A3C] pb-3.5">
           <div>
-            <h3 className="font-brand font-bold text-lg text-[#1E3A2F] flex items-center gap-2">
-              <RefreshCw className="w-5 h-5 text-[#6B3FA0]" />
+            <h3 className="font-brand font-bold text-base text-white flex items-center gap-2">
+              <RefreshCw className="w-4 h-4 text-[#C084FC]" />
               <span>Registro Dettagliato Rotazione Tavoli ({tableTurnoverList.length} tavoli)</span>
             </h3>
-            <p className="text-xs text-stone-500">
+            <p className="text-xs text-slate-400">
               Verifica quante volte è stato girato ogni tavolo e il rendimento totale di coperti
             </p>
           </div>
@@ -259,48 +266,56 @@ export const StatsOverview: React.FC = () => {
           {/* Controls: Filter by Zone & Sort By */}
           <div className="flex items-center gap-2.5 flex-wrap">
             {/* Zone Filter */}
-            <div className="flex items-center bg-[#FBF8F2] border border-[#1E3A2F]/20 rounded-xl p-0.5 text-xs font-semibold">
+            <div className="flex items-center bg-[#0B0E17] border border-[#1C2333] rounded-xl p-0.5 text-xs font-semibold">
               <button
                 onClick={() => setZoneFilter('all')}
-                className={`px-2.5 py-1 rounded-lg transition ${
-                  zoneFilter === 'all' ? 'bg-[#1E3A2F] text-amber-100' : 'text-stone-600'
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                  zoneFilter === 'all'
+                    ? 'bg-[#8B31E0]/25 text-[#C084FC] border border-[#8B31E0]/40'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 Tutti
               </button>
               <button
                 onClick={() => setZoneFilter('main')}
-                className={`px-2.5 py-1 rounded-lg transition ${
-                  zoneFilter === 'main' ? 'bg-[#1E3A2F] text-amber-100' : 'text-stone-600'
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                  zoneFilter === 'main'
+                    ? 'bg-[#8B31E0]/25 text-[#C084FC] border border-[#8B31E0]/40'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Principale
+                Main (A & B)
               </button>
               <button
                 onClick={() => setZoneFilter('bar')}
-                className={`px-2.5 py-1 rounded-lg transition ${
-                  zoneFilter === 'bar' ? 'bg-[#1E3A2F] text-amber-100' : 'text-stone-600'
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                  zoneFilter === 'bar'
+                    ? 'bg-[#8B31E0]/25 text-[#C084FC] border border-[#8B31E0]/40'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 Bar
               </button>
               <button
                 onClick={() => setZoneFilter('private')}
-                className={`px-2.5 py-1 rounded-lg transition ${
-                  zoneFilter === 'private' ? 'bg-[#1E3A2F] text-amber-100' : 'text-stone-600'
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                  zoneFilter === 'private'
+                    ? 'bg-[#8B31E0]/25 text-[#C084FC] border border-[#8B31E0]/40'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Privata
+                Privé
               </button>
             </div>
 
             {/* Sort Selector */}
             <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-stone-400 font-medium">Ordina:</span>
+              <span className="text-slate-400 font-medium">Ordina:</span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-[#FBF8F2] border border-[#1E3A2F]/20 rounded-xl px-2.5 py-1.5 text-xs font-bold text-[#1E3A2F] focus:outline-none"
+                className="bg-[#171D2B] border border-[#273248] rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-100 focus:outline-none focus:border-[#8B31E0] cursor-pointer"
               >
                 <option value="turns">🔥 Più Girati (Max Turni)</option>
                 <option value="covers">👥 Più Coperti Generati</option>
@@ -313,8 +328,8 @@ export const StatsOverview: React.FC = () => {
 
         {/* Turnover Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-[#1E3A2F]">
-            <thead className="bg-[#1E3A2F] text-amber-100 uppercase text-[10px] tracking-wider font-semibold">
+          <table className="w-full text-left text-xs text-slate-200">
+            <thead className="bg-[#171D2B] text-slate-400 uppercase text-[10px] tracking-wider font-semibold border-b border-[#222A3C]">
               <tr>
                 <th className="p-3">Tavolo & Zona</th>
                 <th className="p-3">Capienza Base</th>
@@ -325,40 +340,40 @@ export const StatsOverview: React.FC = () => {
                 <th className="p-3">Dettaglio Turni Orari di Oggi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1E3A2F]/10">
+            <tbody className="divide-y divide-[#222A3C]/80">
               {tableTurnoverList.map((item) => (
-                <tr key={item.tableId} className="hover:bg-[#FBF8F2] transition">
+                <tr key={item.tableId} className="hover:bg-[#151A27] transition">
                   {/* Table identifier */}
                   <td className="p-3">
                     <div className="flex items-center gap-2">
-                      <span className="w-7 h-7 rounded-xl bg-[#1E3A2F] text-amber-100 font-bold flex items-center justify-center font-brand text-xs">
+                      <span className="w-7 h-7 rounded-xl bg-[#171D2B] text-[#C084FC] border border-[#273248] font-bold flex items-center justify-center font-brand text-xs">
                         {item.tableNumber}
                       </span>
                       <div>
-                        <strong className="text-xs font-brand">Tavolo {item.tableNumber}</strong>
-                        <span className="text-[10px] text-stone-500 block">
-                          Zona {item.zone.toUpperCase()}
+                        <strong className="text-xs font-semibold text-white">Tavolo {item.tableNumber}</strong>
+                        <span className="text-[10px] text-slate-400 block uppercase">
+                          {item.zone}
                         </span>
                       </div>
                     </div>
                   </td>
 
                   {/* Base Capacity */}
-                  <td className="p-3 font-mono-num font-semibold text-stone-700">
+                  <td className="p-3 font-mono font-semibold text-slate-300">
                     {item.capacity} posti
                   </td>
 
                   {/* Turn count */}
                   <td className="p-3 text-center">
                     <span
-                      className={`inline-flex items-center gap-1 font-mono-num font-extrabold px-2.5 py-1 rounded-full text-xs ${
+                      className={`inline-flex items-center gap-1 font-mono font-bold px-2.5 py-0.5 rounded-full text-xs border ${
                         item.turnsCount >= 3
-                          ? 'bg-purple-100 text-purple-900 border border-purple-300'
+                          ? 'bg-[#8B31E0]/20 text-[#C084FC] border-[#8B31E0]/50'
                           : item.turnsCount === 2
-                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                          ? 'bg-amber-950/40 text-amber-300 border-amber-500/40'
                           : item.turnsCount === 1
-                          ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                          : 'bg-stone-100 text-stone-500'
+                          ? 'bg-[#059669]/20 text-[#34D399] border-[#059669]/40'
+                          : 'bg-[#171D2B] text-slate-400 border-[#273248]'
                       }`}
                     >
                       <RefreshCw className="w-3 h-3" />
@@ -367,19 +382,19 @@ export const StatsOverview: React.FC = () => {
                   </td>
 
                   {/* Total Covers */}
-                  <td className="p-3 text-center font-mono-num font-extrabold text-sm text-[#1E3A2F]">
+                  <td className="p-3 text-center font-mono font-bold text-sm text-white">
                     {item.coversTotal} px
                   </td>
 
                   {/* Saturation */}
                   <td className="p-3 text-center">
                     <div className="inline-flex flex-col items-center">
-                      <span className="font-mono-num font-bold text-xs text-[#6B3FA0]">
+                      <span className="font-mono font-bold text-xs text-[#C084FC]">
                         {item.saturationPercent}%
                       </span>
-                      <div className="w-16 h-1 bg-stone-200 rounded-full overflow-hidden mt-0.5">
+                      <div className="w-16 h-1 bg-[#171D2B] rounded-full overflow-hidden mt-0.5 border border-[#273248]">
                         <div
-                          className="h-full bg-[#6B3FA0]"
+                          className="h-full bg-gradient-to-r from-[#8B31E0] to-[#A855F7]"
                           style={{ width: `${Math.min(100, item.saturationPercent)}%` }}
                         />
                       </div>
@@ -387,25 +402,25 @@ export const StatsOverview: React.FC = () => {
                   </td>
 
                   {/* Revenue */}
-                  <td className="p-3 text-right font-mono-num font-bold text-emerald-800 text-xs">
-                    {item.revenue.toLocaleString('it-IT')} €
+                  <td className="p-3 text-right font-mono font-bold text-[#34D399] text-xs">
+                    € {item.revenue.toLocaleString('it-IT')}
                   </td>
 
                   {/* Bookings detail strip */}
                   <td className="p-3">
                     {item.bookings.length === 0 ? (
-                      <span className="text-stone-400 italic text-[11px]">Nessun turno oggi</span>
+                      <span className="text-slate-500 italic text-[11px]">Nessun turno oggi</span>
                     ) : (
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {item.bookings.map((b) => (
                           <span
                             key={b.id}
-                            className={`text-[10px] font-mono-num font-semibold px-2 py-0.5 rounded-lg border flex items-center gap-1 ${
+                            className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-lg border flex items-center gap-1 ${
                               b.status === 'seated'
-                                ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                                ? 'bg-[#059669]/20 text-[#34D399] border-[#059669]/50'
                                 : b.status === 'completed'
-                                ? 'bg-stone-100 text-stone-700 border-stone-200'
-                                : 'bg-purple-50 text-purple-900 border-purple-200'
+                                ? 'bg-[#171D2B] text-slate-400 border-[#273248]'
+                                : 'bg-[#8B31E0]/20 text-[#C084FC] border-[#8B31E0]/40'
                             }`}
                             title={`${b.guestName} (${b.partySize} px) · ${b.startTime}-${b.endTime}`}
                           >
@@ -425,7 +440,7 @@ export const StatsOverview: React.FC = () => {
       </div>
 
       {/* Zone Performance Breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {Object.entries(zoneStats).map(([key, stat]) => {
           const occupancyRate =
             stat.capacity > 0 ? Math.min(150, Math.round((stat.bookedCovers / stat.capacity) * 100)) : 0;
@@ -433,33 +448,33 @@ export const StatsOverview: React.FC = () => {
           return (
             <div
               key={key}
-              className="bg-white border border-[#1E3A2F]/15 rounded-2xl p-5 shadow-xs space-y-4"
+              className="bg-[#121622] border border-[#222A3C] rounded-2xl p-4 sm:p-5 shadow-xs space-y-3"
             >
-              <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-                <h3 className="font-brand font-bold text-sm text-[#1E3A2F]">{stat.label}</h3>
-                <span className="text-xs text-stone-500 font-mono-num">
+              <div className="flex items-center justify-between border-b border-[#222A3C] pb-2">
+                <h3 className="font-brand font-bold text-sm text-white">{stat.label}</h3>
+                <span className="text-xs text-slate-400 font-mono">
                   {stat.tablesCount} Tavoli
                 </span>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-stone-600">Coperti Prenotati:</span>
-                  <span className="font-bold font-mono-num text-[#1E3A2F]">
+                  <span className="text-slate-400">Coperti Prenotati:</span>
+                  <span className="font-bold font-mono text-white">
                     {stat.bookedCovers} / {stat.capacity} px
                   </span>
                 </div>
 
-                <div className="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
+                <div className="w-full h-1.5 bg-[#171D2B] rounded-full overflow-hidden border border-[#273248]">
                   <div
-                    className="h-full bg-[#6B3FA0] transition-all"
+                    className="h-full bg-gradient-to-r from-[#8B31E0] to-[#A855F7] transition-all"
                     style={{ width: `${Math.min(100, occupancyRate)}%` }}
                   />
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-stone-500">
+                <div className="flex items-center justify-between text-[11px] text-slate-400">
                   <span>Saturazione Turno:</span>
-                  <span className="font-bold font-mono-num text-[#6B3FA0]">
+                  <span className="font-bold font-mono text-[#C084FC]">
                     {occupancyRate}%
                   </span>
                 </div>
