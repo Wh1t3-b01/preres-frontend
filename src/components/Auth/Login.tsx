@@ -11,6 +11,7 @@ import {
   ArrowRight,
   ArrowLeft,
   KeyRound,
+  Sparkles,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -25,7 +26,6 @@ export const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [attemptCount, setAttemptCount] = useState<number>(0);
   const [lockoutTimer, setLockoutTimer] = useState<number>(0);
   const [recoverySent, setRecoverySent] = useState(false);
 
@@ -98,102 +98,73 @@ export const Login: React.FC = () => {
     }
 
     const result = await signIn(email, password);
-
-    if (!result.success) {
-      const nextAttempts = attemptCount + 1;
-      setAttemptCount(nextAttempts);
-
-      if (nextAttempts >= 5) {
-        setLockoutTimer(30);
-      }
-    } else {
-      setAttemptCount(0);
-      navigate(from, { replace: true });
+    if (!result.success && result.error?.includes('troppi tentativi')) {
+      setLockoutTimer(30);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] flex flex-col justify-center items-center px-4 py-8 relative selection:bg-[#6B3FA0]/20 selection:text-[#1E3A2F]">
-      {/* Subtle Background Atmosphere */}
-      <div className="absolute inset-0 pointer-events-none opacity-30 bg-[radial-gradient(#1E3A2F_0.8px,transparent_0.8px)] [background-size:24px_24px]"></div>
+    <div className="min-h-screen bg-[#0E121B] text-slate-100 flex flex-col justify-center items-center px-4 py-8 relative selection:bg-[#8B31E0]/30 selection:text-white">
+      {/* Subtle Background Glow */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#8B31E0]/15 rounded-full blur-3xl pointer-events-none"></div>
 
-      {/* Main Login Card */}
-      <div className="relative w-full max-w-md bg-white border border-[#1E3A2F]/15 rounded-3xl p-7 sm:p-9 shadow-xl shadow-[#1E3A2F]/5 space-y-6">
+      <div className="relative w-full max-w-md bg-[#121622] border border-[#273248] rounded-3xl p-7 sm:p-9 shadow-2xl space-y-6">
         
-        {/* Brand Identity */}
+        {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#1E3A2F] text-amber-300 shadow-sm border border-amber-400/30 mb-1">
-            <UtensilsCrossed className="w-7 h-7" />
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#8B31E0] to-[#6E20C0] text-white shadow-lg border border-[#A855F7]/40 mb-1">
+            <span className="font-brand font-bold text-2xl">P</span>
           </div>
-          <h1 className="text-2xl font-brand font-bold text-[#1E3A2F] tracking-wide">
+          <h1 className="text-2xl font-brand font-bold text-white tracking-tight">
             SOTTO SOTTO
           </h1>
-          <p className="text-xs uppercase tracking-widest text-[#6B3FA0] font-bold">
-            {mode === 'login' ? 'Bar & Grill · Portale di Servizio' : 'Recupero Password Account'}
-          </p>
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-[10px] uppercase tracking-widest text-[#C084FC] font-bold bg-[#8B31E0]/20 px-2 py-0.5 rounded-full border border-[#8B31E0]/30">
+              PRERES™ Hospitality OS
+            </span>
+          </div>
         </div>
 
-        {/* Global Error Banner */}
-        {authError && (
-          <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-rose-800 text-xs font-medium animate-in fade-in">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-            <div className="space-y-0.5">
-              <strong className="block text-rose-900 font-bold">Avviso</strong>
-              <span>{authError}</span>
+        {/* Recovery Sent Success State */}
+        {recoverySent ? (
+          <div className="space-y-4 text-center py-2 animate-in fade-in">
+            <div className="w-12 h-12 rounded-2xl bg-[#059669]/20 border border-[#059669]/40 text-[#34D399] flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-6 h-6 stroke-[1.5]" />
             </div>
-          </div>
-        )}
-
-        {/* Recovery Link Sent Confirmation */}
-        {recoverySent && mode === 'forgot_password' ? (
-          <div className="p-5 bg-emerald-50 border border-emerald-300 rounded-2xl text-center space-y-3 animate-in fade-in">
-            <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
-            <h3 className="font-bold text-sm text-emerald-900">Link di Recupero Inviato</h3>
-            <p className="text-xs text-emerald-800 leading-relaxed">
-              Abbiamo inviato una email a <strong className="font-semibold">{email}</strong> con il link sicuro per reimpostare la tua password.
+            <h3 className="font-bold text-base text-white">Email di Recupero Inviata</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Abbiamo inviato un link sicuro per reimpostare la password a <strong className="text-white">{email}</strong>. Controlla anche la cartella spam.
             </p>
             <button
               onClick={() => {
-                setMode('login');
                 setRecoverySent(false);
-                clearError();
+                setMode('login');
               }}
-              className="mt-2 text-xs font-bold text-[#1E3A2F] hover:underline inline-flex items-center gap-1 cursor-pointer"
+              className="w-full mt-2 py-2.5 px-4 bg-[#171D2B] hover:bg-[#222A3C] text-slate-200 border border-[#273248] font-semibold text-xs rounded-xl transition cursor-pointer"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Torna alla schermata di accesso</span>
+              Torna alla Schermata di Accesso
             </button>
           </div>
         ) : (
           <>
-            {/* Security Lockout Banner */}
-            {lockoutTimer > 0 && (
-              <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2.5 text-amber-900 text-xs font-semibold animate-pulse">
-                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="block text-amber-950 font-bold">Accesso temporaneamente sospeso</strong>
-                  <span>
-                    Riprova tra <span className="font-mono-num font-bold text-amber-800">{lockoutTimer}s</span>
-                  </span>
-                </div>
+            {/* Error Banner */}
+            {authError && (
+              <div className="p-3 bg-rose-950/30 border border-rose-800/50 rounded-xl flex items-start gap-2.5 text-rose-300 text-xs animate-in fade-in">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <span>{authError}</span>
               </div>
             )}
 
-            {/* Main Form */}
-            <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               
               {/* Email Field */}
               <div className="space-y-1.5">
-                <label
-                  htmlFor="email"
-                  className="block text-xs font-bold text-[#1E3A2F] uppercase tracking-wider"
-                >
-                  Email
+                <label className="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider">
+                  Indirizzo Email
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 absolute left-3.5 top-3 text-stone-400" />
+                  <Mail className="w-4 h-4 absolute left-3.5 top-3 text-slate-500" />
                   <input
-                    id="email"
                     type="email"
                     autoComplete="email"
                     disabled={isLoading || lockoutTimer > 0}
@@ -203,16 +174,16 @@ export const Login: React.FC = () => {
                       if (emailError) validateEmail(e.target.value);
                     }}
                     onBlur={() => validateEmail(email)}
-                    placeholder="nome@ristorante.it"
-                    className={`w-full bg-[#FDFBF7] border rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-[#1E3A2F] font-medium transition focus:outline-none focus:ring-2 ${
+                    placeholder="staff@sottosotto.it"
+                    className={`w-full bg-[#10141F] border rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-white placeholder-slate-500 transition focus:outline-none ${
                       emailError
-                        ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-200'
-                        : 'border-[#1E3A2F]/20 focus:border-[#6B3FA0] focus:ring-[#6B3FA0]/20'
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        ? 'border-rose-500 focus:border-rose-400'
+                        : 'border-[#242C3E] focus:border-[#8B31E0]'
+                    } disabled:opacity-50`}
                   />
                 </div>
                 {emailError && (
-                  <p className="text-[11px] text-rose-600 font-semibold pl-1">{emailError}</p>
+                  <p className="text-[11px] text-rose-400 font-semibold pl-1">{emailError}</p>
                 )}
               </div>
 
@@ -222,7 +193,7 @@ export const Login: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <label
                       htmlFor="password"
-                      className="block text-xs font-bold text-[#1E3A2F] uppercase tracking-wider"
+                      className="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider"
                     >
                       Password
                     </label>
@@ -232,13 +203,13 @@ export const Login: React.FC = () => {
                         setMode('forgot_password');
                         clearError();
                       }}
-                      className="text-[11px] text-[#6B3FA0] hover:text-[#5A338A] font-semibold cursor-pointer"
+                      className="text-[11px] text-[#C084FC] hover:text-[#E9D5FF] font-semibold cursor-pointer"
                     >
                       Password dimenticata?
                     </button>
                   </div>
                   <div className="relative">
-                    <Lock className="w-4 h-4 absolute left-3.5 top-3 text-stone-400" />
+                    <Lock className="w-4 h-4 absolute left-3.5 top-3 text-slate-500" />
                     <input
                       id="password"
                       type={showPassword ? 'text' : 'password'}
@@ -251,24 +222,24 @@ export const Login: React.FC = () => {
                       }}
                       onBlur={() => validatePassword(password)}
                       placeholder="••••••••••••"
-                      className={`w-full bg-[#FDFBF7] border rounded-xl pl-10 pr-10 py-2.5 text-xs text-[#1E3A2F] font-medium transition focus:outline-none focus:ring-2 ${
+                      className={`w-full bg-[#10141F] border rounded-xl pl-10 pr-10 py-2.5 text-xs text-white placeholder-slate-500 transition focus:outline-none ${
                         passwordError
-                          ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-200'
-                          : 'border-[#1E3A2F]/20 focus:border-[#6B3FA0] focus:ring-[#6B3FA0]/20'
-                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          ? 'border-rose-500 focus:border-rose-400'
+                          : 'border-[#242C3E] focus:border-[#8B31E0]'
+                      } disabled:opacity-50`}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       disabled={isLoading || lockoutTimer > 0}
                       aria-label={showPassword ? 'Nascondi password' : 'Mostra password'}
-                      className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-700 transition cursor-pointer p-0.5"
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-white transition cursor-pointer p-0.5"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                   {passwordError && (
-                    <p className="text-[11px] text-rose-600 font-semibold pl-1">{passwordError}</p>
+                    <p className="text-[11px] text-rose-400 font-semibold pl-1">{passwordError}</p>
                   )}
                 </div>
               )}
@@ -277,11 +248,11 @@ export const Login: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading || lockoutTimer > 0}
-                className="w-full mt-3 py-3 px-4 bg-[#1E3A2F] hover:bg-[#152921] text-amber-100 font-bold text-xs rounded-xl shadow-md transition active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className="w-full mt-3 py-3 px-4 bg-gradient-to-r from-[#8B31E0] to-[#7928CA] hover:from-[#9D44F7] hover:to-[#8B31E0] text-white font-semibold text-xs rounded-xl shadow-lg shadow-[#8B31E0]/25 transition active:scale-[0.99] flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {isLoading ? (
                   <>
-                    <span className="w-4 h-4 border-2 border-amber-100 border-t-transparent rounded-full animate-spin"></span>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                     <span>Elaborazione in corso...</span>
                   </>
                 ) : lockoutTimer > 0 ? (
@@ -293,7 +264,7 @@ export const Login: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <span>Accedi al Servizio</span>
+                    <span>Accedi a PRERES™</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -308,7 +279,7 @@ export const Login: React.FC = () => {
                       setMode('login');
                       clearError();
                     }}
-                    className="text-xs font-semibold text-stone-500 hover:text-[#1E3A2F] inline-flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-semibold text-slate-400 hover:text-white inline-flex items-center gap-1 cursor-pointer"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
                     <span>Torna al Login</span>
@@ -320,9 +291,9 @@ export const Login: React.FC = () => {
         )}
 
         {/* Footer Note */}
-        <div className="pt-3 border-t border-stone-100 text-center">
-          <p className="text-[11px] text-stone-400">
-            Sotto Sotto Bar & Grill · Sistema Gestionale Sala
+        <div className="pt-3 border-t border-[#222A3C] text-center">
+          <p className="text-[11px] text-slate-500">
+            Sotto Sotto Bar & Grill · PRERES™ Operations
           </p>
         </div>
       </div>
