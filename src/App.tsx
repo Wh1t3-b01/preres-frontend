@@ -40,10 +40,16 @@ export function DashboardContent() {
   const [selectedTableForDetail, setSelectedTableForDetail] = useState<string | null>(null);
   const [preselectedTableIdsForBooking, setPreselectedTableIdsForBooking] = useState<string[]>([]);
   const [selectedGuestForBooking, setSelectedGuestForBooking] = useState<GuestProfile | null>(null);
+  const [preselectedStartTimeForBooking, setPreselectedStartTimeForBooking] = useState<string | undefined>(undefined);
 
-  const handleOpenBookingModal = (preselectedIds?: string[], guest?: GuestProfile) => {
+  const handleOpenBookingModal = (
+    preselectedIds?: string[],
+    guest?: GuestProfile,
+    startTime?: string
+  ) => {
     setPreselectedTableIdsForBooking(preselectedIds || []);
     setSelectedGuestForBooking(guest || null);
+    setPreselectedStartTimeForBooking(startTime || undefined);
     setIsBookingModalOpen(true);
   };
 
@@ -92,7 +98,10 @@ export function DashboardContent() {
         {currentView === 'waiter_touch' && <WaiterTouchView />}
 
         {currentView === 'timeline' && (
-          <TimelineView onSelectTableForDetails={(tableId) => setSelectedTableForDetail(tableId)} />
+          <TimelineView
+            onSelectTableForDetails={(tableId) => setSelectedTableForDetail(tableId)}
+            onOpenBookingForSlot={(tableId, timeSlot) => handleOpenBookingModal([tableId], undefined, timeSlot)}
+          />
         )}
 
         {currentView === 'crm' && (
@@ -103,7 +112,7 @@ export function DashboardContent() {
 
         {currentView === 'calendar' && (
           <MonthCalendarView
-            onSelectDateAndGoToFloor={() => setCurrentView('floor')}
+            onSelectDateAndGoToTimeline={() => setCurrentView('timeline')}
             onOpenBookingModal={() => handleOpenBookingModal()}
           />
         )}
@@ -125,9 +134,11 @@ export function DashboardContent() {
           setIsBookingModalOpen(false);
           setPreselectedTableIdsForBooking([]);
           setSelectedGuestForBooking(null);
+          setPreselectedStartTimeForBooking(undefined);
         }}
         preselectedTableIds={preselectedTableIdsForBooking}
         initialGuest={selectedGuestForBooking}
+        initialStartTime={preselectedStartTimeForBooking}
       />
 
       <WalkInModal

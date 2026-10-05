@@ -17,11 +17,24 @@ export type StaffRole = 'manager' | 'host' | 'waiter';
 
 export type VIPTier = 'regular' | 'vip' | 'top_spender' | 'critic' | 'friends_family';
 
+export interface GuestAttentionAlert {
+  isAttentionRequired: boolean;
+  alertType: 'positive' | 'negative';
+  alertColor: 'green' | 'red';
+  reason: string;
+  notifyManagerOnBooking: boolean;
+  updatedBy?: string;
+  updatedAt?: string;
+}
+
 export interface GuestProfile {
   id: string;
+  firstName?: string;
+  lastName?: string;
   name: string;
   phone?: string;
   email?: string;
+  lastBookingCode?: string;
   vipTier: VIPTier;
   dietaryRestrictions: string[]; // e.g. ['Gluten Free', 'Nut Allergy', 'Lactose Intolerant']
   preferences: string[]; // e.g. ['Prefers Booth G', 'Still Water room temp', 'Barolo Lover']
@@ -35,6 +48,9 @@ export interface GuestProfile {
   noShowCount: number;
   cancellationCount: number;
   tags: string[]; // e.g. ['High Roller', 'Wine Collector', 'Quiet Table']
+  attentionAlert?: GuestAttentionAlert;
+  isTopSpender?: boolean;
+  enableTopSpenderAlert?: boolean;
   createdAt: string;
   updatedAt: string;
 }

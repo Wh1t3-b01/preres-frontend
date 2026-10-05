@@ -33,6 +33,7 @@ interface BookingModalProps {
   onClose: () => void;
   preselectedTableIds?: string[];
   initialGuest?: GuestProfile | null;
+  initialStartTime?: string;
 }
 
 const COMMON_TAGS = [
@@ -61,6 +62,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   onClose,
   preselectedTableIds,
   initialGuest,
+  initialStartTime,
 }) => {
   const {
     tables,
@@ -77,11 +79,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [guestEmail, setGuestEmail] = useState('');
   const [guestProfileId, setGuestProfileId] = useState<string | undefined>(undefined);
   const [vipTier, setVipTier] = useState<VIPTier | undefined>(undefined);
+  const [matchedGuestProfile, setMatchedGuestProfile] = useState<GuestProfile | null>(null);
   const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([]);
   const [guestSuggestions, setGuestSuggestions] = useState<GuestProfile[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [date, setDate] = useState(globalDate);
-  const [startTime, setStartTime] = useState(globalTime);
+  const [startTime, setStartTime] = useState(initialStartTime || globalTime);
   const [partySize, setPartySize] = useState<number>(2);
   const [customDuration, setCustomDuration] = useState<number>(120);
   const [selectedOptionType, setSelectedOptionType] = useState<'single_or_existing' | 'auto_merge'>('single_or_existing');
@@ -98,7 +101,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setDate(globalDate);
-      setStartTime(globalTime);
+      setStartTime(initialStartTime || globalTime);
       setSuccessBookingCode(null);
       setErrorMessage(null);
       setNameError(false);
@@ -116,12 +119,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         if (initialGuest.internalNotes) {
           setNotes(initialGuest.internalNotes);
         }
+        setMatchedGuestProfile(initialGuest);
       } else {
         setGuestName('');
         setGuestPhone('');
         setGuestEmail('');
         setGuestProfileId(undefined);
         setVipTier(undefined);
+        setMatchedGuestProfile(null);
         setDietaryRestrictions([]);
         setSelectedTags([]);
         setNotes('');
@@ -135,6 +140,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     setGuestEmail(profile.email || '');
     setGuestProfileId(profile.id);
     setVipTier(profile.vipTier);
+    setMatchedGuestProfile(profile);
     setDietaryRestrictions(profile.dietaryRestrictions || []);
     setSelectedTags((prev) => Array.from(new Set([...prev, ...profile.tags])));
     if (profile.internalNotes) {
@@ -518,6 +524,48 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* MANAGER ALERT BANNER FOR RECOGNIZED GUEST */}
+                {matchedGuestProfile?.attentionAlert?.isAttentionRequired && (
+                  <div
+                    className={`mt-2.5 p-3 rounded-xl border-2 text-xs space-y-1 animate-in fade-in ${
+                      matchedGuestProfile.attentionAlert.alertColor === 'red'
+                        ? 'bg-rose-950/40 border-rose-600 text-rose-200 shadow-[0_0_12px_rgba(225,29,72,0.2)]'
+                        : 'bg-emerald-950/40 border-emerald-500 text-emerald-200 shadow-[0_0_12px_rgba(5,150,105,0.2)]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between font-bold text-[11px] uppercase tracking-wider">
+                      <span>
+                        {matchedGuestProfile.attentionAlert.alertColor === 'red'
+                          ? '🚨 ALERT MANAGER (OSPITE CRITICO DA ATTENZIONARE)'
+                          : '🌟 ALERT MANAGER (OSPITE SPECIALE / VIP)'}
+                      </span>
+                      <span className="px-2 py-0.2 rounded-full bg-black/40 text-[9px]">
+                        {matchedGuestProfile.attentionAlert.alertColor === 'red' ? 'ROSSO' : 'VERDE'}
+                      </span>
+                    </div>
+                    <p className="text-white font-medium text-xs">
+                      "{matchedGuestProfile.attentionAlert.reason}"
+                    </p>
+                  </div>
+                )}
+
+                {/* TOP SPENDER MANAGER ALERT BANNER (IF ENABLED BY MANAGER) */}
+                {matchedGuestProfile?.enableTopSpenderAlert && (
+                  <div className="mt-2 p-2.5 rounded-xl border-2 border-amber-500/60 bg-amber-950/30 text-amber-200 text-xs flex items-center justify-between animate-in fade-in">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">💎</span>
+                      <div>
+                        <strong className="text-amber-300 font-bold block text-xs">
+                          VIP Top Spender (Spesa media: €{matchedGuestProfile.avgSpend}/coperto)
+                        </strong>
+                        <span className="text-[10px] text-slate-300">
+                          Supera il doppio della soglia base (65€ x 2 = 130€). Assegnare tavolo prioritario e cura speciale.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Step 2: Orario e Coperti */}

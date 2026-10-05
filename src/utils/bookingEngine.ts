@@ -179,12 +179,15 @@ export function validateAdvanceBookingSlotLimits(
     const projected2 = count2 + (isRequested4Seater ? 0 : 1);
     const projected4 = count4 + (isRequested4Seater ? 1 : 0);
 
-    // Option A: Max 2 tables of 4-seaters (and 0 of 2-seaters)
-    // Option B: Max 2 tables of 2-seaters AND 1 table of 4-seater
-    const satisfiesOptionA = projected4 <= 2 && projected2 === 0;
-    const satisfiesOptionB = projected2 <= 2 && projected4 <= 1;
+    // Concurrency Rule per 15-minute slot:
+    // Option 1: Up to 4 tables of 2-seaters (and 0 of 4-seaters)
+    // Option 2: Up to 1 table of 4-seaters AND up to 2 tables of 2-seaters
+    // Option 3: Up to 2 tables of 4-seaters (and 0 of 2-seaters)
+    const satisfiesOption1 = projected4 === 0 && projected2 <= 4;
+    const satisfiesOption2 = projected4 <= 1 && projected2 <= 2;
+    const satisfiesOption3 = projected4 <= 2 && projected2 === 0;
 
-    if (!satisfiesOptionA && !satisfiesOptionB) {
+    if (!satisfiesOption1 && !satisfiesOption2 && !satisfiesOption3) {
       return {
         isValid: false,
         reason: `Spiacenti, la fascia oraria ${sliceStart} ha raggiunto il limite massimo di capienza per questo turno. Non è possibile prenotare ulteriori tavoli in questo intervallo.`,
@@ -200,7 +203,8 @@ export function validateAdvanceBookingSlotLimits(
 
 export function calcReservationDuration(partySize: number, settings?: RestaurantSettings): number {
   if (partySize <= 2) return settings?.durationSmallMins ?? 120;
-  return settings?.durationLargeMins ?? 165;
+  if (partySize <= 4) return settings?.durationMediumMins ?? 150;
+  return settings?.durationLargeMins ?? 150;
 }
 
 export function isTimeOverlap(

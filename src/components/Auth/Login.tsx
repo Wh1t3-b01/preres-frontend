@@ -166,6 +166,7 @@ export const Login: React.FC = () => {
                   <Mail className="w-4 h-4 absolute left-3.5 top-3 text-slate-500" />
                   <input
                     type="email"
+                    tabIndex={1}
                     autoComplete="email"
                     disabled={isLoading || lockoutTimer > 0}
                     value={email}
@@ -190,28 +191,17 @@ export const Login: React.FC = () => {
               {/* Password Field (Login Mode Only) */}
               {mode === 'login' && (
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label
-                      htmlFor="password"
-                      className="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider"
-                    >
-                      Password
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMode('forgot_password');
-                        clearError();
-                      }}
-                      className="text-[11px] text-[#C084FC] hover:text-[#E9D5FF] font-semibold cursor-pointer"
-                    >
-                      Password dimenticata?
-                    </button>
-                  </div>
+                  <label
+                    htmlFor="password"
+                    className="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider"
+                  >
+                    Password
+                  </label>
                   <div className="relative">
                     <Lock className="w-4 h-4 absolute left-3.5 top-3 text-slate-500" />
                     <input
                       id="password"
+                      tabIndex={2}
                       type={showPassword ? 'text' : 'password'}
                       autoComplete="current-password"
                       disabled={isLoading || lockoutTimer > 0}
@@ -230,6 +220,7 @@ export const Login: React.FC = () => {
                     />
                     <button
                       type="button"
+                      tabIndex={-1}
                       onClick={() => setShowPassword(!showPassword)}
                       disabled={isLoading || lockoutTimer > 0}
                       aria-label={showPassword ? 'Nascondi password' : 'Mostra password'}
@@ -238,9 +229,25 @@ export const Login: React.FC = () => {
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+
                   {passwordError && (
                     <p className="text-[11px] text-rose-400 font-semibold pl-1">{passwordError}</p>
                   )}
+
+                  {/* Subito SOTTO il campo Password: Link Password Dimenticata */}
+                  <div className="flex items-center justify-end pt-1">
+                    <button
+                      type="button"
+                      tabIndex={3}
+                      onClick={() => {
+                        setMode('forgot_password');
+                        clearError();
+                      }}
+                      className="text-[11px] text-[#C084FC] hover:text-[#E9D5FF] font-semibold cursor-pointer transition hover:underline"
+                    >
+                      Password dimenticata?
+                    </button>
+                  </div>
                 </div>
               )}
 

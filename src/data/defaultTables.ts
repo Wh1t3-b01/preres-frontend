@@ -155,7 +155,7 @@ export const DEFAULT_TABLES: RestaurantTable[] = [
     tableNumber: 'G',
     name: 'Tavolo G (Booth VIP)',
     zone: 'main_a',
-    capacity: 4,
+    capacity: 2,
     shape: 'rect-v',
     adjacentWith: [],
     x: 6,
@@ -350,8 +350,8 @@ export const DEFAULT_SETTINGS: RestaurantSettings = {
     dinner: { start: '17:00', end: '23:00', enabled: true },
   },
   durationSmallMins: 120, // 2h for 1-2 guests
-  durationMediumMins: 165, // 2h 45m for 3-4 guests
-  durationLargeMins: 180, // 3h for 5+ guests
+  durationMediumMins: 150, // 2h 30m max for 3-4 guests
+  durationLargeMins: 150, // 2h 30m
   turnWarningMins: 100, // 1h 40m warning
   maxTurnMins: 120, // 2h target flip
 };

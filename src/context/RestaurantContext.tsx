@@ -78,7 +78,8 @@ interface RestaurantContextType {
     reservationId: string,
     newStartTime: string,
     newDate?: string,
-    newTableId?: string
+    newTableId?: string,
+    newDurationMins?: number
   ) => Promise<{ success: boolean; error?: string; reservation?: Reservation }>;
   deleteReservation: (bookingCode: string) => void;
   cancelReservation: (id: string) => void;
@@ -870,7 +871,8 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       reservationId: string,
       newStartTime: string,
       newDate?: string,
-      newTableId?: string
+      newTableId?: string,
+      newDurationMins?: number
     ) => {
       const currentRes = reservations.find(
         (r) => r.id === reservationId || r.bookingCode === reservationId
@@ -881,7 +883,10 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
 
       const targetDate = newDate || currentRes.reservationDate;
       const partySize = currentRes.partySize || 2;
-      const durationMins = currentRes.durationMins || (partySize <= 2 ? 120 : 165);
+      const durationMins =
+        newDurationMins !== undefined
+          ? Math.max(30, newDurationMins)
+          : currentRes.durationMins || (partySize <= 2 ? 120 : 150);
       const newStartM = timeToMins(newStartTime);
       const newEndM = newStartM + durationMins;
       const newEndTime = minsToTime(newEndM);

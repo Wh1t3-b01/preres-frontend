@@ -5,18 +5,19 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
+  ArrowRight,
 } from 'lucide-react';
 
 interface MonthCalendarViewProps {
-  onSelectDateAndGoToFloor: (dateStr: string) => void;
+  onSelectDateAndGoToTimeline: (dateStr: string) => void;
   onOpenBookingModal: (dateStr?: string) => void;
 }
 
 export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
-  onSelectDateAndGoToFloor,
+  onSelectDateAndGoToTimeline,
   onOpenBookingModal,
 }) => {
-  const { reservations, selectedDate, setSelectedDate } = useRestaurant();
+  const { reservations, selectedDate, setSelectedDate, setSelectedTime } = useRestaurant();
 
   // Current viewed month state (defaults to selectedDate's month)
   const [currentYear, setCurrentYear] = useState(() => {
@@ -75,8 +76,6 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
         lunchCovers: number;
         dinnerCovers: number;
         reservationsCount: number;
-        vipCount: number;
-        hasAllergies: boolean;
       }
     > = {};
 
@@ -88,8 +87,6 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
           lunchCovers: 0,
           dinnerCovers: 0,
           reservationsCount: 0,
-          vipCount: 0,
-          hasAllergies: false,
         };
       }
       const data = stats[r.reservationDate];
@@ -99,12 +96,6 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
         data.lunchCovers += r.partySize;
       } else {
         data.dinnerCovers += r.partySize;
-      }
-      if (r.tags?.some((t) => t.toLowerCase().includes('vip')) || r.vipTier === 'vip' || r.vipTier === 'top_spender') {
-        data.vipCount += 1;
-      }
-      if (r.tags?.some((t) => t.toLowerCase().includes('allerg') || t.toLowerCase().includes('glut'))) {
-        data.hasAllergies = true;
       }
     });
 
@@ -123,51 +114,56 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
     return sum;
   }, [monthStatsByDate, currentYear, currentMonth]);
 
+  const handleDayClick = (dateStr: string) => {
+    setSelectedDate(dateStr);
+    setSelectedTime('12:00'); // Always start from lunch shift as requested
+    onSelectDateAndGoToTimeline(dateStr);
+  };
+
   return (
     <div className="space-y-5 max-w-[1780px] mx-auto pb-12 text-slate-100">
-      
       {/* HEADER WITH MONTH NAVIGATION & MONTHLY KPIS */}
       <div className="bg-[#121622] border border-[#222A3C] rounded-2xl p-4 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#171D2B] border border-[#273248] text-[#C084FC] flex items-center justify-center font-bold shadow-xs">
-            <CalendarIcon className="w-4 h-4 stroke-[1.5]" />
+          <div className="w-10 h-10 rounded-2xl bg-[#171D2B] border border-[#273248] text-[#C084FC] flex items-center justify-center font-bold shadow-xs">
+            <CalendarIcon className="w-5 h-5 stroke-[1.5]" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="font-semibold text-base text-white">
+              <h2 className="font-bold text-lg text-white">
                 {monthNames[currentMonth]} {currentYear}
               </h2>
-              <span className="text-[9px] font-semibold uppercase tracking-wider px-2 py-0.2 rounded-full bg-[#8B31E0]/20 text-[#C084FC] border border-[#8B31E0]/30">
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#8B31E0]/20 text-[#C084FC] border border-[#8B31E0]/30">
                 PRERES Horizon Calendar™
               </span>
             </div>
-            <p className="text-[11px] text-slate-400">
-              Panoramica mensile coperti, carico pranzo/cena ed eventi speciali
+            <p className="text-xs text-slate-400">
+              Clicca su qualsiasi data per aprire la Timeline di quel giorno partendo dal turno di pranzo
             </p>
           </div>
         </div>
 
-        {/* Month Navigation & KPI stats */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="bg-[#10141F] border border-[#242C3E] px-3 py-1 rounded-xl">
-            <span className="text-[9px] text-slate-400 font-medium block leading-none">Coperti Mese</span>
-            <span className="font-bold font-mono text-xs text-[#34D399]">{totalMonthCovers} pax</span>
+        {/* Month Navigation & Action */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="bg-[#10141F] border border-[#242C3E] px-3.5 py-1.5 rounded-xl">
+            <span className="text-[10px] text-slate-400 font-medium block leading-none">Totale Coperti Mese</span>
+            <span className="font-bold font-mono text-sm text-[#34D399]">{totalMonthCovers} ospiti</span>
           </div>
 
           <div className="flex items-center bg-[#10141F] border border-[#242C3E] rounded-xl p-0.5">
             <button
               onClick={handlePrevMonth}
-              className="p-1 rounded-lg hover:bg-white/5 text-slate-300 transition cursor-pointer"
+              className="p-1.5 rounded-lg hover:bg-white/5 text-slate-300 transition cursor-pointer"
               title="Mese precedente"
             >
               <ChevronLeft className="w-4 h-4 stroke-[1.5]" />
             </button>
-            <span className="px-2.5 text-xs font-semibold text-slate-200 min-w-[100px] text-center">
+            <span className="px-3 text-xs font-bold text-white min-w-[110px] text-center">
               {monthNames[currentMonth]}
             </span>
             <button
               onClick={handleNextMonth}
-              className="p-1 rounded-lg hover:bg-white/5 text-slate-300 transition cursor-pointer"
+              className="p-1.5 rounded-lg hover:bg-white/5 text-slate-300 transition cursor-pointer"
               title="Mese successivo"
             >
               <ChevronRight className="w-4 h-4 stroke-[1.5]" />
@@ -176,9 +172,9 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
 
           <button
             onClick={() => onOpenBookingModal()}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#8B31E0] hover:bg-[#7928CA] text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-[#8B31E0] hover:bg-[#7928CA] text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer active:scale-95"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[2]" />
+            <Plus className="w-4 h-4 stroke-[2]" />
             <span>Nuova Prenotazione</span>
           </button>
         </div>
@@ -186,25 +182,24 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
 
       {/* CALENDAR GRID (7 COLUMNS MON-SUN) */}
       <div className="bg-[#121622] border border-[#222A3C] rounded-2xl p-3 sm:p-5 shadow-sm">
-        
         {/* Days of Week Header */}
-        <div className="grid grid-cols-7 gap-2 mb-2 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-400 border-b border-[#222A3C] pb-2">
+        <div className="grid grid-cols-7 gap-2.5 mb-2.5 text-center text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-[#222A3C] pb-2.5">
           <span>Lun</span>
           <span>Mar</span>
           <span>Mer</span>
           <span>Gio</span>
           <span>Ven</span>
-          <span className="text-amber-400/80">Sab</span>
-          <span className="text-amber-400/80">Dom</span>
+          <span className="text-amber-400">Sab</span>
+          <span className="text-amber-400">Dom</span>
         </div>
 
         {/* Day Cells Matrix */}
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-2.5">
           {/* Empty offset cells for days of previous month */}
           {Array.from({ length: startOffset }).map((_, idx) => (
             <div
               key={`empty_${idx}`}
-              className="min-h-[90px] sm:min-h-[110px] rounded-xl bg-[#0E121B]/40 border border-dashed border-[#1C2333]/50 opacity-30"
+              className="min-h-[105px] sm:min-h-[125px] rounded-2xl bg-[#0E121B]/40 border border-dashed border-[#1C2333]/50 opacity-25"
             />
           ))}
 
@@ -219,85 +214,68 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
             return (
               <div
                 key={dateStr}
-                onClick={() => {
-                  setSelectedDate(dateStr);
-                  onSelectDateAndGoToFloor(dateStr);
-                }}
-                className={`min-h-[90px] sm:min-h-[110px] p-2 rounded-xl border transition-all flex flex-col justify-between cursor-pointer group shadow-2xs hover:scale-[1.01] ${
+                onClick={() => handleDayClick(dateStr)}
+                className={`min-h-[105px] sm:min-h-[125px] p-3 rounded-2xl border transition-all flex flex-col justify-between cursor-pointer group hover:scale-[1.02] shadow-xs ${
                   isSelected
-                    ? 'border-[#8B31E0] ring-2 ring-[#8B31E0]/40 bg-[#8B31E0]/15'
+                    ? 'border-[#8B31E0] ring-2 ring-[#8B31E0]/50 bg-[#8B31E0]/20'
                     : isToday
-                    ? 'border-[#34D399]/70 bg-[#059669]/10'
-                    : 'border-[#222A3C] bg-[#151A26] hover:border-[#8B31E0]/40'
+                    ? 'border-[#34D399] bg-[#059669]/15'
+                    : 'border-[#222A3C] bg-[#151A26] hover:border-[#8B31E0]/60 hover:bg-[#181F2E]'
                 }`}
+                title={`Clicca per aprire la Timeline del ${dayNum} ${monthNames[currentMonth]} (Pranzo 12:00)`}
               >
-                {/* Cell Header: Day Number & Indicators */}
+                {/* Cell Header: Large Day Number */}
                 <div className="flex items-center justify-between">
                   <span
-                    className={`text-xs font-bold font-mono rounded px-1.5 py-0.2 ${
+                    className={`text-base sm:text-lg font-bold font-mono px-2 py-0.5 rounded-lg ${
                       isSelected
                         ? 'bg-[#8B31E0] text-white'
                         : isToday
                         ? 'bg-[#059669] text-white'
-                        : 'text-slate-300'
+                        : 'text-white group-hover:text-[#C084FC] transition-colors'
                     }`}
                   >
                     {dayNum}
                   </span>
 
-                  <div className="flex items-center gap-1">
-                    {stats?.vipCount ? (
-                      <span className="text-[9px] text-amber-400" title={`${stats.vipCount} VIP`}>
-                        ⭐
-                      </span>
-                    ) : null}
-                    {stats?.hasAllergies && (
-                      <span className="text-[9px] text-rose-400" title="Allergie segnalate">
-                        ⚠️
-                      </span>
-                    )}
-                  </div>
+                  {isToday && (
+                    <span className="text-[10px] uppercase font-bold text-[#34D399] tracking-wider">
+                      Oggi
+                    </span>
+                  )}
                 </div>
 
-                {/* Cover Metrics Body */}
+                {/* Cover Metrics Body: Stripped down to essentials, clear & large text */}
                 {stats && stats.totalCovers > 0 ? (
-                  <div className="space-y-1 my-1">
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className="font-bold text-white font-mono">
-                        {stats.totalCovers} px
-                      </span>
-                      <span className="text-[8px] text-slate-400 font-mono">
-                        {stats.reservationsCount} pren.
-                      </span>
+                  <div className="space-y-1 my-auto py-1">
+                    <div className="text-base sm:text-lg font-bold font-mono text-white leading-tight">
+                      {stats.totalCovers} <span className="text-xs font-normal text-slate-300">ospiti</span>
                     </div>
-
-                    {/* Lunch / Dinner Cover distribution */}
-                    <div className="grid grid-cols-2 gap-1 text-[8px] font-mono">
-                      <div className="bg-[#10141F] border border-[#242C3E] text-amber-300 px-1 py-0.2 rounded text-center truncate">
-                        ☀️ {stats.lunchCovers}
-                      </div>
-                      <div className="bg-[#10141F] border border-[#242C3E] text-[#C084FC] px-1 py-0.2 rounded text-center truncate">
-                        🌙 {stats.dinnerCovers}
-                      </div>
+                    <div className="text-xs font-semibold text-[#C084FC]">
+                      {stats.reservationsCount} {stats.reservationsCount === 1 ? 'prenotazione' : 'prenotazioni'}
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400 pt-0.5">
+                      <span className="text-amber-300">☀️ {stats.lunchCovers}</span>
+                      <span>·</span>
+                      <span className="text-[#C084FC]">🌙 {stats.dinnerCovers}</span>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-[9px] text-slate-600 italic text-center py-2">
-                    —
+                  <div className="my-auto py-2 text-center text-xs text-slate-500 italic">
+                    Nessuna prenotata
                   </div>
                 )}
 
                 {/* Footer Quick Action */}
-                <div className="pt-0.5 border-t border-white/5 flex items-center justify-between text-[8px] text-slate-500 group-hover:text-[#C084FC] font-semibold">
-                  <span>Apri Sala ➔</span>
+                <div className="pt-1 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400 group-hover:text-[#C084FC] font-semibold transition-colors">
+                  <span>Apri Timeline</span>
+                  <ArrowRight className="w-3.5 h-3.5 stroke-[2] group-hover:translate-x-0.5 transition-transform" />
                 </div>
               </div>
             );
           })}
         </div>
-
       </div>
-
     </div>
   );
 };
