@@ -183,6 +183,11 @@ export interface TimeSlotOption {
   memberTableIds: string[];
   zone: TableZone;
   fitScore: number;
+  sectionId?: 'section_1' | 'section_2' | 'section_3';
+  sectionName?: string;
+  serverName?: string;
+  sectionArrivalsAtSlot?: number;
+  isRecommendedForBalancing?: boolean;
 }
 
 export interface RecommendedMerge {

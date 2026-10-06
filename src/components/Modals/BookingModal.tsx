@@ -9,6 +9,9 @@ import {
   validateAdvanceBookingSlotLimits,
   LUNCH_SLOTS,
   DINNER_SLOTS,
+  DINING_SECTIONS,
+  getTableDiningSection,
+  getSectionArrivalsForSlot,
 } from '../../utils/bookingEngine';
 import {
   X,
@@ -24,6 +27,8 @@ import {
   User,
   Utensils,
   Check,
+  Activity,
+  ShieldCheck,
 } from 'lucide-react';
 import { RecommendedMerge, TimeSlotOption, GuestProfile, VIPTier } from '../../types';
 import { guestCrmService } from '../../services/guestCrmService';
@@ -201,6 +206,21 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       reservations
     );
   }, [isOpen, date, startTime, calculatedEndTime, partySize, reservations]);
+
+  // Live Section Arrivals at current startTime
+  const sectionArrivals = useMemo(() => {
+    if (!isOpen || !date || !startTime) return { section_1: 0, section_2: 0, section_3: 0 };
+    return getSectionArrivalsForSlot(date, startTime, reservations);
+  }, [isOpen, date, startTime, reservations]);
+
+  const isSelectedTableInBusySection = useMemo(() => {
+    if (!selectedTableOption) return false;
+    const targetOpt = [...directMatches, ...oversizedMatches].find((o) => o.tableId === selectedTableOption);
+    if (!targetOpt || !targetOpt.sectionId) return false;
+    const arrivalsInThisSec = sectionArrivals[targetOpt.sectionId] || 0;
+    const hasAlternativeFreeSection = Object.values(sectionArrivals).some((arr) => arr === 0);
+    return arrivalsInThisSec > 0 && hasAlternativeFreeSection;
+  }, [selectedTableOption, directMatches, oversizedMatches, sectionArrivals]);
 
   // Always ensure a valid table option is preselected
   useEffect(() => {
@@ -701,9 +721,77 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <div className="p-2.5 bg-rose-950/30 border border-rose-800/50 rounded-xl flex items-start gap-2 text-rose-300 text-xs font-medium animate-in fade-in">
                     <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                     <div>
-                      <strong className="block text-rose-200 font-semibold">Soglia Massima Raggiunta</strong>
+                      <strong className="block text-rose-200 font-semibold">Soglia Massima Raggiunta (Slot 15 Minuti)</strong>
                       <span className="text-[11px]">{slotCapacityValidation.reason}</span>
                     </div>
+                  </div>
+                )}
+
+                {/* Live 15-Minute Slot Pacing & Section Balance Indicator */}
+                {slotCapacityValidation.isValid && (
+                  <div className="bg-[#10141F] border border-[#242C3E] rounded-2xl p-3 space-y-2.5 animate-in fade-in">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-white flex items-center gap-1.5">
+                        <Activity className="w-3.5 h-3.5 text-[#C084FC]" />
+                        <span>Pacing Arrivi Scaglione {startTime} (15 Minuti)</span>
+                      </span>
+                      <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-300 border border-emerald-800/40">
+                        Ritmo Regolare ✓
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-300 font-mono bg-[#171D2B] px-2.5 py-1.5 rounded-xl border border-[#222A3C]">
+                      <span>
+                        Arrivi alle {startTime}: <strong className="text-white">{(slotCapacityValidation.active4Seaters || 0) + (slotCapacityValidation.active2Seaters || 0)}</strong> (da 4: <strong className="text-[#C084FC]">{slotCapacityValidation.active4Seaters || 0}</strong>, da 2: <strong className="text-[#34D399]">{slotCapacityValidation.active2Seaters || 0}</strong>)
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        Regola: 2 tab da 4 | 1 tab da 4 + 2 da 2 | 3 tab da 2
+                      </span>
+                    </div>
+
+                    {/* 3 Dining Room Sections Load Distribution */}
+                    <div className="space-y-1">
+                      <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                        Distribuzione Carico tra le 3 Sezioni di Sala:
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+                        {Object.values(DINING_SECTIONS).map((sec) => {
+                          const arrivals = sectionArrivals[sec.id] || 0;
+                          const isFree = arrivals === 0;
+                          return (
+                            <div
+                              key={sec.id}
+                              className={`p-2 rounded-xl border text-[11px] flex flex-col justify-between transition ${
+                                isFree
+                                  ? 'bg-[#151D2A] border-emerald-800/40 text-slate-200'
+                                  : 'bg-[#1C1A24] border-amber-800/40 text-slate-300'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between font-semibold">
+                                <span className="truncate">{sec.name.split('—')[1] || sec.name}</span>
+                                {isFree ? (
+                                  <span className="text-[9px] text-emerald-300 font-bold bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-800/40">
+                                    0 arrivi ✨
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] text-amber-300 font-bold bg-amber-950/60 px-1.5 py-0.2 rounded border border-amber-800/40">
+                                    {arrivals} arrivo
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
+                                <span>Cameriere: {sec.serverName.split(' ')[0]}</span>
+                                {isFree && <span className="text-[9px] text-emerald-400 font-semibold">Consigliato</span>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] text-slate-400 leading-relaxed italic border-t border-white/5 pt-1.5">
+                      💡 Lo scaglione di 15 minuti permette al cameriere di familiarizzare con la sezione e prendere la comanda prima dell’arrivo successivo, proteggendo la cucina dall’intasamento simultaneo.
+                    </p>
                   </div>
                 )}
               </div>
@@ -713,7 +801,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-[#C084FC] stroke-[1.5]" />
-                    <span>3. Assegnazione Tavolo</span>
+                    <span>3. Assegnazione Tavolo (Bilanciamento Sala)</span>
                   </span>
 
                   {recommendedMerges.length > 0 && (
@@ -800,58 +888,96 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
                 {/* Tab: Single Tables */}
                 {(tableTab === 'single' || recommendedMerges.length === 0) && (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 max-h-32 overflow-y-auto p-1 bg-[#171D2B] rounded-xl border border-[#273248]">
-                    {directMatches.map((opt) => {
-                      const isSelected =
-                        selectedOptionType === 'single_or_existing' && selectedTableOption === opt.tableId;
-                      return (
-                        <button
-                          key={opt.tableId}
-                          type="button"
-                          onClick={() => {
-                            setSelectedOptionType('single_or_existing');
-                            setSelectedTableOption(opt.tableId);
-                            setSelectedMergeCandidate(null);
-                          }}
-                          className={`p-1.5 rounded-lg border text-left transition flex items-center justify-between text-xs cursor-pointer ${
-                            isSelected
-                              ? 'bg-[#8B31E0]/20 border-[#8B31E0] text-white font-semibold shadow-xs'
-                              : 'bg-[#10141F] border-[#242C3E] text-slate-300 hover:border-[#8B31E0]/40'
-                          }`}
-                        >
-                          <span className="truncate font-semibold">{opt.tableName}</span>
-                          <span className="text-[9px] font-mono text-[#34D399] shrink-0 ml-1">
-                            {opt.capacity}p
-                          </span>
-                        </button>
-                      );
-                    })}
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-36 overflow-y-auto p-1 bg-[#171D2B] rounded-xl border border-[#273248]">
+                      {directMatches.map((opt) => {
+                        const isSelected =
+                          selectedOptionType === 'single_or_existing' && selectedTableOption === opt.tableId;
+                        return (
+                          <button
+                            key={opt.tableId}
+                            type="button"
+                            onClick={() => {
+                              setSelectedOptionType('single_or_existing');
+                              setSelectedTableOption(opt.tableId);
+                              setSelectedMergeCandidate(null);
+                            }}
+                            className={`p-2 rounded-xl border text-left transition flex flex-col justify-between text-xs cursor-pointer ${
+                              isSelected
+                                ? 'bg-[#8B31E0]/20 border-[#8B31E0] text-white font-semibold shadow-xs'
+                                : opt.isRecommendedForBalancing
+                                ? 'bg-[#10141F] border-emerald-800/40 hover:border-emerald-500/70 text-slate-200'
+                                : 'bg-[#10141F] border-[#242C3E] text-slate-300 hover:border-[#8B31E0]/40'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <span className="truncate font-semibold text-white">{opt.tableName}</span>
+                              <span className="text-[9px] font-mono text-[#34D399] shrink-0 font-bold ml-1">
+                                {opt.capacity}p
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between w-full text-[9px] text-slate-400 mt-1">
+                              <span className="truncate">
+                                {opt.sectionName?.split('—')[1]?.trim() || opt.sectionName}
+                              </span>
+                              {opt.isRecommendedForBalancing ? (
+                                <span className="text-emerald-400 font-semibold shrink-0">✨ Bilanciato</span>
+                              ) : (
+                                <span className="text-amber-400 font-mono shrink-0">{opt.sectionArrivalsAtSlot} arr.</span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
 
-                    {oversizedMatches.map((opt) => {
-                      const isSelected =
-                        selectedOptionType === 'single_or_existing' && selectedTableOption === opt.tableId;
-                      return (
-                        <button
-                          key={opt.tableId}
-                          type="button"
-                          onClick={() => {
-                            setSelectedOptionType('single_or_existing');
-                            setSelectedTableOption(opt.tableId);
-                            setSelectedMergeCandidate(null);
-                          }}
-                          className={`p-1.5 rounded-lg border text-left transition flex items-center justify-between text-xs cursor-pointer ${
-                            isSelected
-                              ? 'bg-[#8B31E0]/20 border-[#8B31E0] text-white font-semibold shadow-xs'
-                              : 'bg-[#10141F] border-[#242C3E] text-slate-400 hover:border-slate-500'
-                          }`}
-                        >
-                          <span className="truncate font-medium">{opt.tableName}</span>
-                          <span className="text-[9px] font-mono text-slate-500 shrink-0 ml-1">
-                            {opt.capacity}p
+                      {oversizedMatches.map((opt) => {
+                        const isSelected =
+                          selectedOptionType === 'single_or_existing' && selectedTableOption === opt.tableId;
+                        return (
+                          <button
+                            key={opt.tableId}
+                            type="button"
+                            onClick={() => {
+                              setSelectedOptionType('single_or_existing');
+                              setSelectedTableOption(opt.tableId);
+                              setSelectedMergeCandidate(null);
+                            }}
+                            className={`p-2 rounded-xl border text-left transition flex flex-col justify-between text-xs cursor-pointer ${
+                              isSelected
+                                ? 'bg-[#8B31E0]/20 border-[#8B31E0] text-white font-semibold shadow-xs'
+                                : 'bg-[#10141F] border-[#242C3E] text-slate-400 hover:border-slate-500'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <span className="truncate font-medium">{opt.tableName}</span>
+                              <span className="text-[9px] font-mono text-slate-500 shrink-0 ml-1">
+                                {opt.capacity}p
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between w-full text-[9px] text-slate-500 mt-1">
+                              <span className="truncate">
+                                {opt.sectionName?.split('—')[1]?.trim() || opt.sectionName}
+                              </span>
+                              <span>{opt.serverName?.split(' ')[0]}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Section balancing advisory banner if a loaded section is picked */}
+                    {isSelectedTableInBusySection && (
+                      <div className="p-2.5 bg-amber-950/30 border border-amber-800/50 rounded-xl flex items-start gap-2 text-amber-300 text-xs animate-in fade-in">
+                        <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="block text-amber-200 font-semibold">Suggerimento Bilanciamento Sala</strong>
+                          <span className="text-[11px] leading-relaxed">
+                            La sezione del tavolo selezionato ha già 1 arrivo programmato alle {startTime}. 
+                            Per distribuire equamente i commensali tra i 3 camerieri (15 min per tavolo) e non sovraccaricare la cucina con comande simultanee, è consigliato scegliere un tavolo nelle sezioni contrassegnate con ✨.
                           </span>
-                        </button>
-                      );
-                    })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

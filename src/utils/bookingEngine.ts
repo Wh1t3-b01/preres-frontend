@@ -126,15 +126,107 @@ export interface SlotValidationResult {
   violatingSlot?: string;
   active2Seaters?: number;
   active4Seaters?: number;
+  maxAllowedNotice?: string;
+}
+
+export type DiningSectionId = 'section_1' | 'section_2' | 'section_3';
+
+export interface DiningSectionInfo {
+  id: DiningSectionId;
+  name: string;
+  serverName: string;
+  zone: string;
+  description: string;
+}
+
+export const DINING_SECTIONS: Record<DiningSectionId, DiningSectionInfo> = {
+  section_1: {
+    id: 'section_1',
+    name: 'Sezione 1 — Ala Ovest',
+    serverName: 'Simone Rinaldi',
+    zone: 'main_a',
+    description: 'Tavolo G (Booth VIP), 10, 11, 12, 20, 21',
+  },
+  section_2: {
+    id: 'section_2',
+    name: 'Sezione 2 — Ala Est & Centro',
+    serverName: 'Marco Gentili',
+    zone: 'main_b',
+    description: 'Tavoli 13, 14, 15, 16, 21_b, 22, 23',
+  },
+  section_3: {
+    id: 'section_3',
+    name: 'Sezione 3 — Privé, Terrazza & Bar',
+    serverName: 'Chiara Valli / Server 3',
+    zone: 'private',
+    description: 'Tavoli Bar B1–B4, Privé P1–P5',
+  },
+};
+
+/**
+ * Returns the assigned dining room section for a given table.
+ */
+export function getTableDiningSection(tableId: string, zone?: string): DiningSectionInfo {
+  // Section 1: Main A / West wing
+  if (['G', '10', '11', '12', '20', '21'].includes(tableId) || zone === 'main_a') {
+    return DINING_SECTIONS.section_1;
+  }
+  // Section 2: Main B / East wing & Center
+  if (['13', '14', '15', '16', '21_b', '22', '23'].includes(tableId) || zone === 'main_b') {
+    return DINING_SECTIONS.section_2;
+  }
+  // Section 3: Private, Terrace, Bar
+  return DINING_SECTIONS.section_3;
 }
 
 /**
- * Strict Concurrency & Overlap Validation Engine for Advance Bookings.
- * Enforces:
- * - Option A: Max 2 tables of 4-seaters, OR
- * - Option B: Max 2 tables of 2-seaters AND 1 table of 4-seaters.
- * Across every overlapping 15-minute slice during the dining duration window
- * (120 mins for 1-2 guests, 165 mins for 4+ guests).
+ * Counts how many tables are already booked to ARRIVE at a specific 15-minute slot
+ * across each of the 3 dining room sections.
+ */
+export function getSectionArrivalsForSlot(
+  date: string,
+  startTime: string,
+  reservations: Reservation[],
+  excludeReservationId?: string
+): Record<DiningSectionId, number> {
+  const counts: Record<DiningSectionId, number> = {
+    section_1: 0,
+    section_2: 0,
+    section_3: 0,
+  };
+
+  const slotReservations = reservations.filter(
+    (r) =>
+      r.reservationDate === date &&
+      r.startTime === startTime &&
+      r.status !== 'cancelled' &&
+      r.id !== excludeReservationId
+  );
+
+  for (const r of slotReservations) {
+    const sec = getTableDiningSection(r.tableId);
+    counts[sec.id] = (counts[sec.id] || 0) + 1;
+  }
+
+  return counts;
+}
+
+/**
+ * Strict Concurrency & 15-Minute Slot Pacing Engine.
+ * 
+ * Rules specified by management:
+ * In any 15-minute slot (e.g. at 19:30):
+ * The limit of tables arriving at that specific 15-minute slot is:
+ * - Option A: Max 2 tables of 4 (and 0 of 2)
+ * - Option B: Max 1 table of 4 AND up to 2 tables of 2
+ * - Option C: Max 3 tables of 2 (and 0 of 4)
+ * 
+ * In the next 15-minute slot (e.g. 19:45):
+ * Another set of guests can arrive following the exact same rules.
+ * And so on every 15 minutes until all the physical tables in the restaurant are occupied.
+ * 
+ * This gives waiters 15 minutes to greet guests, explain the menu, and take food/drink orders
+ * without overwhelming any server section or sending kitchen ticket storms all at once.
  */
 export function validateAdvanceBookingSlotLimits(
   date: string,
@@ -144,61 +236,65 @@ export function validateAdvanceBookingSlotLimits(
   reservations: Reservation[],
   excludeReservationId?: string
 ): SlotValidationResult {
-  const startM = timeToMins(startTime);
-  const endM = timeToMins(endTime);
   const isRequested4Seater = partySize >= 3;
 
-  // Filter existing active advance bookings (exclude walk-ins and cancelled/completed)
-  const activeAdvanceReservations = reservations.filter(
+  // Filter reservations on the same date arriving at this specific 15-minute slot
+  const slotArrivals = reservations.filter(
     (r) =>
       r.reservationDate === date &&
       !r.isWalkIn &&
       r.status !== 'cancelled' &&
       r.status !== 'completed' &&
-      r.id !== excludeReservationId
+      r.id !== excludeReservationId &&
+      r.startTime === startTime
   );
 
-  // Check every 15-minute interval slice
-  for (let slice = startM; slice < endM; slice += 15) {
-    const sliceStart = minsToTime(slice);
-    const sliceEnd = minsToTime(slice + 15);
+  let count2 = 0;
+  let count4 = 0;
 
-    let count2 = 0;
-    let count4 = 0;
-
-    for (const res of activeAdvanceReservations) {
-      if (isTimeOverlap(sliceStart, sliceEnd, res.startTime, res.endTime)) {
-        if (res.partySize <= 2) {
-          count2++;
-        } else {
-          count4++;
-        }
-      }
-    }
-
-    const projected2 = count2 + (isRequested4Seater ? 0 : 1);
-    const projected4 = count4 + (isRequested4Seater ? 1 : 0);
-
-    // Concurrency Rule per 15-minute slot:
-    // Option 1: Up to 4 tables of 2-seaters (and 0 of 4-seaters)
-    // Option 2: Up to 1 table of 4-seaters AND up to 2 tables of 2-seaters
-    // Option 3: Up to 2 tables of 4-seaters (and 0 of 2-seaters)
-    const satisfiesOption1 = projected4 === 0 && projected2 <= 4;
-    const satisfiesOption2 = projected4 <= 1 && projected2 <= 2;
-    const satisfiesOption3 = projected4 <= 2 && projected2 === 0;
-
-    if (!satisfiesOption1 && !satisfiesOption2 && !satisfiesOption3) {
-      return {
-        isValid: false,
-        reason: `Spiacenti, la fascia oraria ${sliceStart} ha raggiunto il limite massimo di capienza per questo turno. Non è possibile prenotare ulteriori tavoli in questo intervallo.`,
-        violatingSlot: sliceStart,
-        active2Seaters: count2,
-        active4Seaters: count4,
-      };
+  for (const res of slotArrivals) {
+    if (res.partySize <= 2) {
+      count2++;
+    } else {
+      count4++;
     }
   }
 
-  return { isValid: true };
+  const projected2 = count2 + (isRequested4Seater ? 0 : 1);
+  const projected4 = count4 + (isRequested4Seater ? 1 : 0);
+
+  // Management Rules per 15-minute slot:
+  // Option A: 2 tables of 4 (projected4 <= 2 && projected2 === 0)
+  // Option B: 1 table of 4 and 2 tables of 2 (projected4 <= 1 && projected2 <= 2)
+  // Option C: 3 tables of 2 (projected4 === 0 && projected2 <= 3)
+  const satisfiesOptionA = projected4 <= 2 && projected2 === 0;
+  const satisfiesOptionB = projected4 <= 1 && projected2 <= 2;
+  const satisfiesOptionC = projected4 === 0 && projected2 <= 3;
+
+  if (!satisfiesOptionA && !satisfiesOptionB && !satisfiesOptionC) {
+    let explanation = '';
+    if (isRequested4Seater) {
+      explanation = `Lo scaglione delle ${startTime} ha già ${count4} tavoli da 4 e ${count2} tavoli da 2 in arrivo. Il limite per slot di 15 min è 2 tavoli da 4 (senza tavoli da 2) oppure 1 tavolo da 4 + 2 tavoli da 2.`;
+    } else {
+      explanation = `Lo scaglione delle ${startTime} ha già ${count4} tavoli da 4 e ${count2} tavoli da 2 in arrivo. Il limite per slot di 15 min è 3 tavoli da 2 (oppure 2 tavoli da 2 se è presente 1 tavolo da 4).`;
+    }
+
+    return {
+      isValid: false,
+      reason: `Spiacenti, la fascia oraria delle ${startTime} ha raggiunto il limite massimo di arrivi scaglionati. ${explanation} Si consiglia di selezionare lo scaglione delle 15 minuti successivi per garantire il ritmo ottimale di servizio in sala e in cucina.`,
+      violatingSlot: startTime,
+      active2Seaters: count2,
+      active4Seaters: count4,
+      maxAllowedNotice: 'Max: 2 tab da 4 (0 tab da 2) | 1 tab da 4 + 2 tab da 2 | 3 tab da 2 (0 tab da 4)',
+    };
+  }
+
+  return {
+    isValid: true,
+    active2Seaters: count2,
+    active4Seaters: count4,
+    maxAllowedNotice: 'Capacità slot 15 min disponibile',
+  };
 }
 
 export function calcReservationDuration(partySize: number, settings?: RestaurantSettings): number {
@@ -277,6 +373,9 @@ export function getAvailableSingleAndGroupTables(
   const directMatches: TimeSlotOption[] = [];
   const oversizedMatches: TimeSlotOption[] = [];
 
+  // Calculate live section load for this specific 15-minute arrival slot
+  const sectionArrivals = getSectionArrivalsForSlot(date, startTime, reservations, excludeReservationId);
+
   // 1. Check existing active TableGroups for this date
   const dateGroups = activeGroups.filter((g) => g.groupDate === date);
   for (const group of dateGroups) {
@@ -285,6 +384,9 @@ export function getAvailableSingleAndGroupTables(
     );
 
     if (allMembersFree) {
+      const section = getTableDiningSection(group.memberTableIds[0], group.zone);
+      const arrivalsInSec = sectionArrivals[section.id] || 0;
+
       const option: TimeSlotOption = {
         tableId: group.memberTableIds[0], // primary anchor
         tableName: group.combinedName,
@@ -293,6 +395,11 @@ export function getAvailableSingleAndGroupTables(
         memberTableIds: group.memberTableIds,
         zone: group.zone,
         fitScore: Math.max(0, group.totalCapacity - partySize),
+        sectionId: section.id,
+        sectionName: section.name,
+        serverName: section.serverName,
+        sectionArrivalsAtSlot: arrivalsInSec,
+        isRecommendedForBalancing: arrivalsInSec === 0,
       };
 
       if (group.totalCapacity >= partySize) {
@@ -324,6 +431,9 @@ export function getAvailableSingleAndGroupTables(
 
     if (isFree) {
       const cap = table.capacityOverride || table.capacity;
+      const section = getTableDiningSection(table.id, table.zone);
+      const arrivalsInSec = sectionArrivals[section.id] || 0;
+
       const option: TimeSlotOption = {
         tableId: table.id,
         tableName: `Tavolo ${table.tableNumber}`,
@@ -332,6 +442,11 @@ export function getAvailableSingleAndGroupTables(
         memberTableIds: [table.id],
         zone: table.zone,
         fitScore: Math.max(0, cap - partySize),
+        sectionId: section.id,
+        sectionName: section.name,
+        serverName: section.serverName,
+        sectionArrivalsAtSlot: arrivalsInSec,
+        isRecommendedForBalancing: arrivalsInSec === 0,
       };
 
       if (cap >= partySize) {
@@ -344,9 +459,22 @@ export function getAvailableSingleAndGroupTables(
     }
   }
 
-  // Sort by fit score (closest capacity first)
-  directMatches.sort((a, b) => a.fitScore - b.fitScore);
-  oversizedMatches.sort((a, b) => a.fitScore - b.fitScore);
+  // Sort by section load balancing (prioritize sections with 0 arrivals in this 15-min slot), then by fit score
+  const sortFn = (a: TimeSlotOption, b: TimeSlotOption) => {
+    // 1. Prioritize sections with 0 arrivals in this slot
+    if (a.isRecommendedForBalancing && !b.isRecommendedForBalancing) return -1;
+    if (!a.isRecommendedForBalancing && b.isRecommendedForBalancing) return 1;
+
+    // 2. Fewest arrivals in section at this slot
+    const diffArrivals = (a.sectionArrivalsAtSlot || 0) - (b.sectionArrivalsAtSlot || 0);
+    if (diffArrivals !== 0) return diffArrivals;
+
+    // 3. Closest fit score
+    return a.fitScore - b.fitScore;
+  };
+
+  directMatches.sort(sortFn);
+  oversizedMatches.sort(sortFn);
 
   return { directMatches, oversizedMatches };
 }
