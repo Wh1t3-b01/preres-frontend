@@ -132,7 +132,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         setNotes('');
       }
     }
-  }, [isOpen, globalDate, globalTime, initialGuest]);
+  }, [isOpen, globalDate, globalTime, initialGuest, initialStartTime]);
 
   const handleSelectGuestProfile = (profile: GuestProfile) => {
     setGuestName(profile.name);

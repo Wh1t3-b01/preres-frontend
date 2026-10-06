@@ -36,9 +36,8 @@ export const TableCard: React.FC<TableCardProps> = ({
     settings
   );
 
-  const effectiveCapacity = group
-    ? group.totalCapacity
-    : table.capacityOverride || table.capacity;
+  const rawCapacity = table.id === 'G' ? 2 : (table.capacityOverride || table.capacity);
+  const effectiveCapacity = group ? group.totalCapacity : rawCapacity;
 
   const displayName = group ? group.combinedName : table.tableNumber;
 
@@ -58,7 +57,7 @@ export const TableCard: React.FC<TableCardProps> = ({
   }
 
   if (table.id === 'G') {
-    sizeStyle = 'w-40 sm:w-44 h-20';
+    sizeStyle = 'w-22 sm:w-24 h-18';
   }
 
   // Refined Twilight Slate Styling

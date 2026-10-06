@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
+import { guestCrmService } from '../../services/guestCrmService';
 import { computeTableInstantStatus } from '../../utils/bookingEngine';
 import {
   X,
@@ -59,6 +60,7 @@ export const TableDetailModal: React.FC<TableDetailModalProps> = ({
     toggleTableBlock,
     transferTable,
     setTableCourseStage,
+    rescheduleReservation,
   } = useRestaurant();
 
   const [isTransferring, setIsTransferring] = useState(false);
@@ -269,9 +271,12 @@ export const TableDetailModal: React.FC<TableDetailModalProps> = ({
               </div>
             ) : (
               <div className="space-y-2.5">
-                {tableDayReservations.map((res) => {
+                {tableDayReservations.map((res, idx) => {
                   const isSeated = res.status === 'seated';
                   const isCompleted = res.status === 'completed';
+                  const guestProfile =
+                    (res.guestProfileId ? guestCrmService.getProfileById(res.guestProfileId) : undefined) ||
+                    guestCrmService.getProfileByNameOrPhone(res.guestName, res.guestPhone);
 
                   return (
                     <div
@@ -284,19 +289,60 @@ export const TableDetailModal: React.FC<TableDetailModalProps> = ({
                           : 'bg-[#171D2B] border-[#273248] hover:border-[#8B31E0]/50'
                       }`}
                     >
-                      {/* Top Info Line: Time & Status */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-sm text-[#C084FC]">
-                            Ore {res.startTime} – {res.endTime}
+                      {/* Top Info Line: Slot, Time, +/- 15m Duration & Status */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] uppercase font-mono font-bold bg-[#8B31E0]/20 text-[#C084FC] border border-[#8B31E0]/30 px-2 py-0.5 rounded-md">
+                            Slot {idx + 1}: {res.guestName} alle {res.startTime}
                           </span>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#10141F] text-slate-300 border border-[#242C3E]">
-                            {res.durationMins} min
+                          <span className="font-mono font-bold text-xs text-white">
+                            {res.startTime} – {res.endTime}
                           </span>
+
+                          {/* Quick Duration Stepper (-15m / +15m) */}
+                          <div className="flex items-center gap-1 bg-[#10141F] px-1.5 py-0.5 rounded-lg border border-[#242C3E]">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newDur = Math.max(30, (res.durationMins || 120) - 15);
+                                rescheduleReservation(
+                                  res.id,
+                                  res.startTime,
+                                  res.reservationDate,
+                                  res.tableId,
+                                  newDur
+                                );
+                              }}
+                              className="text-[10px] text-slate-400 hover:text-white px-1 py-0.5 rounded hover:bg-[#20273A] transition cursor-pointer font-mono font-bold"
+                              title="Riduci durata (-15 min)"
+                            >
+                              -15m
+                            </button>
+                            <span className="text-[10px] font-mono text-[#34D399] font-bold px-1">
+                              {res.durationMins || 120}m
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newDur = Math.min(300, (res.durationMins || 120) + 15);
+                                rescheduleReservation(
+                                  res.id,
+                                  res.startTime,
+                                  res.reservationDate,
+                                  res.tableId,
+                                  newDur
+                                );
+                              }}
+                              className="text-[10px] text-[#C084FC] hover:text-[#E9D5FF] px-1 py-0.5 rounded hover:bg-[#20273A] transition cursor-pointer font-mono font-bold"
+                              title="Allunga durata (+15 min)"
+                            >
+                              +15m
+                            </button>
+                          </div>
                         </div>
 
                         <span
-                          className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase border ${
+                          className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase border shrink-0 ${
                             isSeated
                               ? 'bg-[#059669]/20 text-[#34D399] border-[#059669]/40'
                               : res.status === 'confirmed'
@@ -329,6 +375,39 @@ export const TableDetailModal: React.FC<TableDetailModalProps> = ({
                             <p className="text-[11px] text-amber-200/90 italic mt-0.5">
                               Note: {res.notes}
                             </p>
+                          )}
+
+                          {/* Guest Attention Alert (Green/Red) */}
+                          {guestProfile?.attentionAlert?.isAttentionRequired && (
+                            <div
+                              className={`mt-2 p-2 rounded-xl border text-[11px] font-medium flex items-start gap-1.5 ${
+                                guestProfile.attentionAlert.alertColor === 'red'
+                                  ? 'bg-rose-950/40 border-rose-600/70 text-rose-200'
+                                  : 'bg-emerald-950/40 border-emerald-600/70 text-emerald-200'
+                              }`}
+                            >
+                              <span className="shrink-0 text-xs">
+                                {guestProfile.attentionAlert.alertColor === 'red' ? '🚨' : '🌟'}
+                              </span>
+                              <div>
+                                <strong className="block text-[10px] uppercase font-bold tracking-wider">
+                                  {guestProfile.attentionAlert.alertColor === 'red'
+                                    ? 'Alert Manager (Ospite Critico):'
+                                    : 'Alert Manager (VIP Speciale):'}
+                                </strong>
+                                <span>"{guestProfile.attentionAlert.reason}"</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Top Spender Alert (if enabled) */}
+                          {guestProfile?.enableTopSpenderAlert && (
+                            <div className="mt-1.5 p-1.5 rounded-xl border border-amber-500/50 bg-amber-950/30 text-amber-200 text-[10px] flex items-center gap-1.5 font-medium">
+                              <span>💎</span>
+                              <span>
+                                <strong>VIP Top Spender</strong> (Spesa media: €{guestProfile.avgSpend}/pax ≥ 130€)
+                              </span>
+                            </div>
                           )}
                         </div>
 

@@ -142,19 +142,247 @@ CREATE POLICY "Public can join waitlist"
     TO anon, authenticated
     WITH CHECK (guest_name IS NOT NULL AND guest_phone IS NOT NULL AND party_size > 0);
 
--- Only authenticated staff can view and manage waitlist entries
-CREATE POLICY "Staff can view waitlist"
-    ON waitlist_queue FOR SELECT
+-- =========================================================================
+-- 5. GUESTS & GUEST INTELLIGENCE 360 (CRM & VIP PRIVACY)
+-- =========================================================================
+ALTER TABLE guests ENABLE ROW LEVEL SECURITY;
+
+-- Staff (Manager, Host, Waiter) can read guest profiles, notes and preferences
+CREATE POLICY "Staff can view guest CRM profiles"
+    ON guests FOR SELECT
     TO authenticated
     USING (public.current_staff_role() IN ('manager', 'host', 'waiter'));
 
-CREATE POLICY "Staff can update waitlist"
-    ON waitlist_queue FOR UPDATE
+-- Staff can register new guests or update notes/preferences
+CREATE POLICY "Staff can create new guest profiles"
+    ON guests FOR INSERT
+    TO authenticated
+    WITH CHECK (public.current_staff_role() IN ('manager', 'host', 'waiter'));
+
+CREATE POLICY "Staff can update guest profile notes and tags"
+    ON guests FOR UPDATE
     TO authenticated
     USING (public.current_staff_role() IN ('manager', 'host', 'waiter'))
     WITH CHECK (public.current_staff_role() IN ('manager', 'host', 'waiter'));
 
-CREATE POLICY "Managers can remove waitlist entries"
-    ON waitlist_queue FOR DELETE
+-- CRITICAL FIX FOR GUEST DELETION:
+-- Only Managers can permanently DELETE guest profiles from the database.
+-- Associated reservations have 'ON DELETE SET NULL' so foreign key 23503 errors do NOT occur.
+CREATE POLICY "Only managers can permanently delete guest profiles"
+    ON guests FOR DELETE
     TO authenticated
     USING (public.current_staff_role() = 'manager');
+
+
+-- =========================================================================
+-- 6. WAITER ACCOUNT MANAGEMENT & MANAGER RBAC (RPC FUNCTIONS)
+-- =========================================================================
+
+-- Function: Manager creates waiter credentials (email + password)
+-- Uses SECURITY DEFINER to interact with Supabase Auth without exposing service role key
+CREATE OR REPLACE FUNCTION public.admin_create_waiter_account(
+    p_email TEXT,
+    p_password TEXT,
+    p_first_name TEXT,
+    p_last_name TEXT,
+    p_pin_code TEXT DEFAULT '1234'
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+    v_user_id UUID;
+    v_new_user RECORD;
+BEGIN
+    -- Verify caller is a Manager
+    IF public.current_staff_role() != 'manager' THEN
+        RAISE EXCEPTION 'Accesso negato: solo i Manager possono creare account per i camerieri.';
+    END IF;
+
+    -- Check if user already exists
+    IF EXISTS (SELECT 1 FROM auth.users WHERE email = p_email) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Un account con questa email esiste già.');
+    END IF;
+
+    -- Generate UUID for new waiter
+    v_user_id := gen_random_uuid();
+
+    -- Insert into auth.users (Supabase Auth internal)
+    INSERT INTO auth.users (
+        instance_id,
+        id,
+        aud,
+        role,
+        email,
+        encrypted_password,
+        email_confirmed_at,
+        raw_app_meta_data,
+        raw_user_meta_data,
+        created_at,
+        updated_at
+    )
+    VALUES (
+        '00000000-0000-0000-0000-000000000000',
+        v_user_id,
+        'authenticated',
+        'authenticated',
+        p_email,
+        crypt(p_password, gen_salt('bf')),
+        NOW(),
+        jsonb_build_object('provider', 'email', 'providers', ARRAY['email']),
+        jsonb_build_object('first_name', p_first_name, 'last_name', p_last_name, 'role', 'waiter'),
+        NOW(),
+        NOW()
+    );
+
+    -- Insert or update profile in public.staff_profiles
+    INSERT INTO public.staff_profiles (
+        id,
+        first_name,
+        last_name,
+        full_name,
+        email,
+        role,
+        is_active,
+        pin_code
+    )
+    VALUES (
+        v_user_id,
+        p_first_name,
+        p_last_name,
+        p_first_name || ' ' || p_last_name,
+        p_email,
+        'waiter',
+        TRUE,
+        p_pin_code
+    )
+    ON CONFLICT (id) DO UPDATE SET
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        full_name = EXCLUDED.full_name,
+        is_active = TRUE,
+        pin_code = EXCLUDED.pin_code;
+
+    RETURN jsonb_build_object('success', true, 'user_id', v_user_id);
+END;
+$$;
+
+-- Function: Manager changes or resets a waiter's password
+CREATE OR REPLACE FUNCTION public.admin_reset_waiter_password(
+    p_waiter_id UUID,
+    p_new_password TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+BEGIN
+    -- Verify caller is a Manager
+    IF public.current_staff_role() != 'manager' THEN
+        RAISE EXCEPTION 'Accesso negato: solo i Manager possono modificare o resettare le password dei camerieri.';
+    END IF;
+
+    IF length(p_new_password) < 6 THEN
+        RETURN jsonb_build_object('success', false, 'error', 'La password deve contenere almeno 6 caratteri.');
+    END IF;
+
+    -- Update encrypted password in auth.users
+    UPDATE auth.users
+    SET encrypted_password = crypt(p_new_password, gen_salt('bf')),
+        updated_at = NOW()
+    WHERE id = p_waiter_id;
+
+    -- Also update pin_code for tablet quick-switch (first 4 chars)
+    UPDATE public.staff_profiles
+    SET pin_code = substring(p_new_password from 1 for 4),
+        updated_at = NOW()
+    WHERE id = p_waiter_id;
+
+    RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+-- Function: Manager toggles waiter is_active status (Enable/Disable access)
+CREATE OR REPLACE FUNCTION public.admin_toggle_waiter_active(
+    p_waiter_id UUID,
+    p_is_active BOOLEAN
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    IF public.current_staff_role() != 'manager' THEN
+        RAISE EXCEPTION 'Accesso negato: solo i Manager possono abilitare o disabilitare il personale.';
+    END IF;
+
+    UPDATE public.staff_profiles
+    SET is_active = p_is_active,
+        updated_at = NOW()
+    WHERE id = p_waiter_id;
+
+    RETURN jsonb_build_object('success', true, 'is_active', p_is_active);
+END;
+$$;
+
+
+-- =========================================================================
+-- 7. POST-SEND ORDER SECURITY & WAITER AUDIT LOGS (RLS)
+-- =========================================================================
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE waiter_audit_logs ENABLE ROW LEVEL SECURITY;
+
+-- Orders & Items RLS
+CREATE POLICY "Staff can view orders"
+    ON orders FOR SELECT
+    TO authenticated
+    USING (public.current_staff_role() IN ('manager', 'host', 'waiter'));
+
+CREATE POLICY "Staff can manage orders"
+    ON orders FOR ALL
+    TO authenticated
+    USING (public.current_staff_role() IN ('manager', 'waiter'))
+    WITH CHECK (public.current_staff_role() IN ('manager', 'waiter'));
+
+CREATE POLICY "Staff can view order items"
+    ON order_items FOR SELECT
+    TO authenticated
+    USING (public.current_staff_role() IN ('manager', 'waiter'));
+
+CREATE POLICY "Waiters can insert draft order items"
+    ON order_items FOR INSERT
+    TO authenticated
+    WITH CHECK (public.current_staff_role() IN ('manager', 'waiter'));
+
+CREATE POLICY "Waiters can update order items"
+    ON order_items FOR UPDATE
+    TO authenticated
+    USING (public.current_staff_role() IN ('manager', 'waiter'))
+    WITH CHECK (public.current_staff_role() IN ('manager', 'waiter'));
+
+-- Audit Logs RLS: IMMUTABLE FORENSIC LOG
+-- 1. Managers can view ALL audit logs
+CREATE POLICY "Managers can view all audit logs"
+    ON waiter_audit_logs FOR SELECT
+    TO authenticated
+    USING (public.current_staff_role() = 'manager');
+
+-- 2. System and authorized staff can insert audit log records
+CREATE POLICY "System can record authorized voids"
+    ON waiter_audit_logs FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+-- 3. NO ONE CAN UPDATE OR DELETE AUDIT LOGS (Tamper-proof compliance)
+CREATE POLICY "No updates allowed on audit logs"
+    ON waiter_audit_logs FOR UPDATE
+    USING (false);
+
+CREATE POLICY "No deletion allowed on audit logs"
+    ON waiter_audit_logs FOR DELETE
+    USING (false);

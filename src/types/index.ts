@@ -55,6 +55,44 @@ export interface GuestProfile {
   updatedAt: string;
 }
 
+export interface StaffMember {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  email: string;
+  role: StaffRole;
+  isActive: boolean;
+  pinCode?: string;
+  createdAt: string;
+  lastLoginAt?: string;
+  stats?: {
+    tablesServedCount: number;
+    totalRevenueGenerated: number;
+    voidCount: number;
+    topSellerItem?: string;
+    lowSellerItem?: string;
+  };
+}
+
+export interface WaiterAuditLog {
+  id: string;
+  waiterId: string;
+  waiterName: string;
+  tableId: string;
+  orderId?: string;
+  itemId: string;
+  itemName: string;
+  itemPrice: number;
+  quantity: number;
+  reason: string;
+  totalBefore: number;
+  totalAfter: number;
+  waiterVoidCount: number;
+  createdAt: string;
+  managerApprovedBy?: string;
+}
+
 export interface RestaurantTable {
   id: string;
   tableNumber: string;

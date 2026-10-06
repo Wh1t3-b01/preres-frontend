@@ -71,7 +71,7 @@ const QUICK_TAGS = [
 ];
 
 export const GuestCRMView: React.FC<GuestCRMViewProps> = ({ onBookForGuest }) => {
-  const { reservations, settings } = useRestaurant();
+  const { reservations, settings, unlinkDeletedGuestProfile } = useRestaurant();
   const [profiles, setProfiles] = useState<GuestProfile[]>(() => guestCrmService.getProfiles());
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTierFilter, setSelectedTierFilter] = useState<'all' | VIPTier | 'attention'>('all');
@@ -363,9 +363,11 @@ export const GuestCRMView: React.FC<GuestCRMViewProps> = ({ onBookForGuest }) =>
     setIsFormOpen(false);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!guestToDelete) return;
-    guestCrmService.deleteProfile(guestToDelete.id);
+    const targetId = guestToDelete.id;
+    await guestCrmService.deleteProfile(targetId);
+    unlinkDeletedGuestProfile(targetId);
     setGuestToDelete(null);
     reloadProfiles();
   };

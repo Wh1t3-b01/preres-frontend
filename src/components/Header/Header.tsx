@@ -13,8 +13,20 @@ import {
 import { useAuth } from '../../context/AuthContext';
 
 interface HeaderProps {
-  currentView: 'floor' | 'reservations' | 'timeline' | 'calendar' | 'shift_overview' | 'waitlist' | 'waiter_touch' | 'stats' | 'crm';
-  setCurrentView: (view: 'floor' | 'reservations' | 'timeline' | 'calendar' | 'shift_overview' | 'waitlist' | 'waiter_touch' | 'stats' | 'crm') => void;
+  currentView:
+    | 'floor'
+    | 'reservations'
+    | 'timeline'
+    | 'calendar'
+    | 'shift_overview'
+    | 'waitlist'
+    | 'waiter_touch'
+    | 'stats'
+    | 'crm'
+    | 'server_view'
+    | 'waiter_hub'
+    | 'staff_control';
+  setCurrentView: (view: any) => void;
   onOpenBookingModal: () => void;
   onOpenWalkInModal: () => void;
   onOpenDatabaseModal: () => void;

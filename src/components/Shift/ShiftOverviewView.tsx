@@ -1,5 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
+import { MenuManagementTab } from './MenuManagementTab';
+import { ShiftRevenueAnalyticsTab } from './ShiftRevenueAnalyticsTab';
 import {
   Users,
   TrendingUp,
@@ -7,6 +9,9 @@ import {
   DollarSign,
   Activity,
   Sparkles,
+  Utensils,
+  BarChart3,
+  Clock,
 } from 'lucide-react';
 
 interface ShiftOverviewViewProps {
@@ -18,6 +23,7 @@ export const ShiftOverviewView: React.FC<ShiftOverviewViewProps> = ({
   onOpenPrintRunSheet,
 }) => {
   const { reservations, tables, settings, selectedDate, kpis } = useRestaurant();
+  const [activeTab, setActiveTab] = useState<'pacing' | 'menu' | 'analytics'>('pacing');
 
   const dayReservations = useMemo(() => {
     return reservations
@@ -100,6 +106,48 @@ export const ShiftOverviewView: React.FC<ShiftOverviewViewProps> = ({
         </div>
       </div>
 
+      {/* SHIFT MASTER NAVIGATION TABS */}
+      <div className="flex items-center gap-2 bg-[#121622] p-1.5 rounded-2xl border border-[#222A3C] overflow-x-auto [scrollbar-width:none]">
+        <button
+          onClick={() => setActiveTab('pacing')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+            activeTab === 'pacing'
+              ? 'bg-[#8B31E0] text-white shadow-sm'
+              : 'text-slate-400 hover:text-white hover:bg-[#171D2B]'
+          }`}
+        >
+          <Activity className="w-4 h-4 stroke-[1.75]" />
+          <span>Pacing Cucina & Turno</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('menu')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+            activeTab === 'menu'
+              ? 'bg-amber-500 text-slate-950 shadow-sm'
+              : 'text-slate-400 hover:text-white hover:bg-[#171D2B]'
+          }`}
+        >
+          <Utensils className="w-4 h-4 stroke-[1.75]" />
+          <span>Gestione Menu & Fuori Menù</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('analytics')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+            activeTab === 'analytics'
+              ? 'bg-[#059669] text-white shadow-sm'
+              : 'text-slate-400 hover:text-white hover:bg-[#171D2B]'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4 stroke-[1.75]" />
+          <span>Analytics Incassi & Top/Low Sellers</span>
+        </button>
+      </div>
+
+      {/* TAB 1: PACING CUCINA & FLUSSI TURNO */}
+      {activeTab === 'pacing' && (
+        <div className="space-y-5">
       {/* 4-KPI SUMMARY CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-[#121622] p-3.5 rounded-2xl border border-[#222A3C] shadow-xs">
@@ -276,9 +324,15 @@ export const ShiftOverviewView: React.FC<ShiftOverviewViewProps> = ({
             </div>
           </div>
         </div>
-
       </div>
+    </div>
+  )}
 
+      {/* TAB 2: GESTIONE MENU & FUORI MENÙ */}
+      {activeTab === 'menu' && <MenuManagementTab />}
+
+      {/* TAB 3: ANALYTICS & PERFORMANCE INCASSI */}
+      {activeTab === 'analytics' && <ShiftRevenueAnalyticsTab />}
     </div>
   );
 };

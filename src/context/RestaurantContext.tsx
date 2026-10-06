@@ -82,6 +82,7 @@ interface RestaurantContextType {
     newDurationMins?: number
   ) => Promise<{ success: boolean; error?: string; reservation?: Reservation }>;
   deleteReservation: (bookingCode: string) => void;
+  unlinkDeletedGuestProfile: (guestProfileId: string) => void;
   cancelReservation: (id: string) => void;
   seatReservation: (id: string) => void;
   completeReservation: (id: string) => void;
@@ -158,7 +159,9 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
         if (Array.isArray(parsed) && parsed.length > 0) {
           const hasNewZones = parsed.some((t: any) => t.zone === 'main_a' || t.zone === 'main_b');
           if (hasNewZones) {
-            return parsed;
+            return parsed.map((t: any) =>
+              t.id === 'G' ? { ...t, capacity: 2, capacityOverride: 2 } : t
+            );
           }
         }
       } catch (e) {
@@ -1121,6 +1124,16 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     });
   }, [addToast]);
 
+  const unlinkDeletedGuestProfile = useCallback((guestProfileId: string) => {
+    setReservations((prev) => {
+      const updated = prev.map((r) =>
+        r.guestProfileId === guestProfileId ? { ...r, guestProfileId: undefined } : r
+      );
+      realtimeSync.broadcast({ type: 'RESERVATION_UPDATED', payload: updated });
+      return updated;
+    });
+  }, []);
+
   const clearCompletedReservations = useCallback((targetDate?: string) => {
     setReservations((prev) => {
       const updated = prev.filter((r) => {
@@ -1298,6 +1311,7 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
         updateReservation,
         rescheduleReservation,
         deleteReservation,
+        unlinkDeletedGuestProfile,
         cancelReservation,
         seatReservation,
         completeReservation,

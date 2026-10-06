@@ -1,11 +1,14 @@
 import { GuestProfile, VIPTier, GuestAttentionAlert } from '../types';
 
 const CRM_STORAGE_KEY = 'sotto_guest_crm_profiles';
+const DELETED_GUESTS_KEY = 'sotto_deleted_guest_ids';
 const TOP_SPENDER_THRESHOLD_PRO_CAPITE = 130; // Threshold: 65€ * 2 = 130€
+
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 export const INITIAL_GUEST_PROFILES: GuestProfile[] = [
   {
-    id: 'guest_1',
+    id: 'e0a1f2b3-0001-4000-8000-000000000001',
     firstName: 'Giorgio',
     lastName: 'Colombo',
     name: 'Avv. Giorgio Colombo',
@@ -37,7 +40,7 @@ export const INITIAL_GUEST_PROFILES: GuestProfile[] = [
     updatedAt: '2026-09-28T22:30:00Z',
   },
   {
-    id: 'guest_2',
+    id: 'e0a1f2b3-0002-4000-8000-000000000002',
     firstName: 'Elena',
     lastName: 'Moretti',
     name: 'Dott.ssa Elena Moretti',
@@ -69,7 +72,7 @@ export const INITIAL_GUEST_PROFILES: GuestProfile[] = [
     updatedAt: '2026-09-15T21:00:00Z',
   },
   {
-    id: 'guest_3',
+    id: 'e0a1f2b3-0003-4000-8000-000000000003',
     firstName: 'Marco',
     lastName: 'De Luca',
     name: 'Famiglia De Luca',
@@ -93,7 +96,7 @@ export const INITIAL_GUEST_PROFILES: GuestProfile[] = [
     updatedAt: '2026-09-22T15:00:00Z',
   },
   {
-    id: 'guest_4',
+    id: 'e0a1f2b3-0004-4000-8000-000000000004',
     firstName: 'Roberto',
     lastName: 'Vannini',
     name: 'Roberto Vannini',
@@ -126,31 +129,64 @@ export const INITIAL_GUEST_PROFILES: GuestProfile[] = [
 ];
 
 export const guestCrmService = {
+  getDeletedGuestIds(): string[] {
+    try {
+      const raw = localStorage.getItem(DELETED_GUESTS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  },
+
   getProfiles(): GuestProfile[] {
+    const deletedIds = new Set(this.getDeletedGuestIds());
     const saved = localStorage.getItem(CRM_STORAGE_KEY);
-    if (saved) {
+    if (saved !== null) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.filter((p) => !deletedIds.has(p.id));
         }
       } catch (e) {
         console.error('Failed to parse guest CRM profiles', e);
       }
     }
-    localStorage.setItem(CRM_STORAGE_KEY, JSON.stringify(INITIAL_GUEST_PROFILES));
-    return INITIAL_GUEST_PROFILES;
+    const initialFiltered = INITIAL_GUEST_PROFILES.filter((p) => !deletedIds.has(p.id));
+    localStorage.setItem(CRM_STORAGE_KEY, JSON.stringify(initialFiltered));
+    return initialFiltered;
   },
 
   saveProfiles(profiles: GuestProfile[]): void {
-    localStorage.setItem(CRM_STORAGE_KEY, JSON.stringify(profiles));
+    const deletedIds = new Set(this.getDeletedGuestIds());
+    const filtered = profiles.filter((p) => !deletedIds.has(p.id));
+    localStorage.setItem(CRM_STORAGE_KEY, JSON.stringify(filtered));
   },
 
-  deleteProfile(id: string): boolean {
+  async deleteProfile(id: string): Promise<boolean> {
+    // 1. Add to tombstone list to prevent any reappearance
+    const deletedIds = this.getDeletedGuestIds();
+    if (!deletedIds.includes(id)) {
+      deletedIds.push(id);
+      localStorage.setItem(DELETED_GUESTS_KEY, JSON.stringify(deletedIds));
+    }
+
+    // 2. Remove from active local storage
     const profiles = this.getProfiles();
     const remaining = profiles.filter((p) => p.id !== id);
-    if (remaining.length === profiles.length) return false;
-    this.saveProfiles(remaining);
+    localStorage.setItem(CRM_STORAGE_KEY, JSON.stringify(remaining));
+
+    // 3. Delete from Supabase if configured
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase.from('guests').delete().eq('id', id);
+        if (error) {
+          console.warn('[Supabase Guests] Failed to delete guest from database:', error.message);
+        }
+      } catch (err) {
+        console.warn('[Supabase Guests] Network or DB error during guest delete:', err);
+      }
+    }
+
     return true;
   },
 
@@ -231,7 +267,11 @@ export const guestCrmService = {
       return updated;
     } else {
       const newProfile: GuestProfile = {
-        id: profileData.id || `guest_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        id:
+          profileData.id ||
+          (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `e0a1f2b3-${Date.now().toString(16).slice(-4)}-4000-8000-${Math.random().toString(16).slice(2, 14).padEnd(12, '0')}`),
         firstName,
         lastName,
         name: fullName,

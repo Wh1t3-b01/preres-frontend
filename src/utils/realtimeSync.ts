@@ -23,6 +23,9 @@ export type RealtimeEvent =
   | { type: 'TABLE_MERGED'; payload: any }
   | { type: 'TABLE_UNMERGED'; payload: { groupId: string } }
   | { type: 'WAITLIST_UPDATED'; payload: any }
+  | { type: 'WAITER_VOID_ALERT'; payload: any }
+  | { type: 'STAFF_MEMBER_CREATED'; payload: any }
+  | { type: 'STAFF_STATUS_CHANGED'; payload: { staffId: string; isActive: boolean } }
   | { type: 'DATABASE_RESET' }
   | { type: 'PRESENCE_COUNT'; payload: { count: number } };
 

@@ -227,11 +227,11 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
                 {/* Cell Header: Large Day Number */}
                 <div className="flex items-center justify-between">
                   <span
-                    className={`text-base sm:text-lg font-bold font-mono px-2 py-0.5 rounded-lg ${
+                    className={`text-xl sm:text-2xl font-black font-mono px-2 py-0.5 rounded-xl ${
                       isSelected
-                        ? 'bg-[#8B31E0] text-white'
+                        ? 'bg-[#8B31E0] text-white shadow-sm'
                         : isToday
-                        ? 'bg-[#059669] text-white'
+                        ? 'bg-[#059669] text-white shadow-sm'
                         : 'text-white group-hover:text-[#C084FC] transition-colors'
                     }`}
                   >
@@ -239,36 +239,33 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
                   </span>
 
                   {isToday && (
-                    <span className="text-[10px] uppercase font-bold text-[#34D399] tracking-wider">
+                    <span className="text-[10px] uppercase font-bold text-[#34D399] tracking-wider bg-[#059669]/20 border border-[#059669]/40 px-2 py-0.5 rounded-full">
                       Oggi
                     </span>
                   )}
                 </div>
 
-                {/* Cover Metrics Body: Stripped down to essentials, clear & large text */}
+                {/* Minimal Cover Metrics: Only total booked guests per day */}
                 {stats && stats.totalCovers > 0 ? (
-                  <div className="space-y-1 my-auto py-1">
-                    <div className="text-base sm:text-lg font-bold font-mono text-white leading-tight">
-                      {stats.totalCovers} <span className="text-xs font-normal text-slate-300">ospiti</span>
+                  <div className="my-auto py-2 text-center">
+                    <div className="text-xl sm:text-2xl font-black font-mono text-white leading-tight">
+                      {stats.totalCovers}{' '}
+                      <span className="text-xs font-semibold text-slate-300">coperti</span>
                     </div>
-                    <div className="text-xs font-semibold text-[#C084FC]">
-                      {stats.reservationsCount} {stats.reservationsCount === 1 ? 'prenotazione' : 'prenotazioni'}
-                    </div>
-                    <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400 pt-0.5">
-                      <span className="text-amber-300">☀️ {stats.lunchCovers}</span>
-                      <span>·</span>
-                      <span className="text-[#C084FC]">🌙 {stats.dinnerCovers}</span>
+                    <div className="text-[11px] font-semibold text-[#C084FC] mt-0.5 font-mono">
+                      {stats.reservationsCount}{' '}
+                      {stats.reservationsCount === 1 ? 'prenotazione' : 'prenotazioni'}
                     </div>
                   </div>
                 ) : (
-                  <div className="my-auto py-2 text-center text-xs text-slate-500 italic">
-                    Nessuna prenotata
+                  <div className="my-auto py-2 text-center text-xs text-slate-500 font-mono italic">
+                    0 prenotati
                   </div>
                 )}
 
                 {/* Footer Quick Action */}
-                <div className="pt-1 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400 group-hover:text-[#C084FC] font-semibold transition-colors">
-                  <span>Apri Timeline</span>
+                <div className="pt-1.5 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400 group-hover:text-[#C084FC] font-semibold transition-colors">
+                  <span>Vai a Pranzo (12:00)</span>
                   <ArrowRight className="w-3.5 h-3.5 stroke-[2] group-hover:translate-x-0.5 transition-transform" />
                 </div>
               </div>

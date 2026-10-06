@@ -9,6 +9,7 @@ import {
   Wine,
   UtensilsCrossed,
   Shield,
+  Plus,
 } from 'lucide-react';
 
 interface FloorPlanViewProps {
@@ -197,6 +198,16 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
               <Layers className="w-3.5 h-3.5 stroke-[1.5]" />
               <span>Unisci Tavoli</span>
             </button>
+            {onOpenBookingModalWithTables && (
+              <button
+                onClick={() => onOpenBookingModalWithTables(selectedTableIds)}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-3.5 py-1.5 rounded-xl text-xs transition shadow-md whitespace-nowrap flex items-center gap-1.5 cursor-pointer shadow-emerald-900/30"
+                title="Crea una prenotazione su tutti i tavoli selezionati"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[1.5]" />
+                <span>Prenota Gruppo ({selectedTotalCapacity} pax)</span>
+              </button>
+            )}
             <button
               onClick={clearTableSelection}
               className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition cursor-pointer"

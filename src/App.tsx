@@ -17,6 +17,9 @@ import { GuestCRMView } from './components/CRM/GuestCRMView';
 import { MonthCalendarView } from './components/Calendar/MonthCalendarView';
 import { ShiftOverviewView } from './components/Shift/ShiftOverviewView';
 import { PrintRunSheetModal } from './components/Shift/PrintRunSheetModal';
+import { StaffManagementModal } from './components/Staff/StaffManagementModal';
+import { ServerView } from './components/ServerView/ServerView';
+import { ManagerVoidAlertBanner } from './components/Common/ManagerVoidAlertBanner';
 import { BookingModal } from './components/Modals/BookingModal';
 import { WalkInModal } from './components/Modals/WalkInModal';
 import { TableDetailModal } from './components/Modals/TableDetailModal';
@@ -25,11 +28,24 @@ import { ServerMonitorModal } from './components/Modals/ServerMonitorModal';
 import { ShiftBriefingModal } from './components/Shift/ShiftBriefingModal';
 import { IconSidebar } from './components/Sidebar/IconSidebar';
 import { ToastContainer } from './components/Common/ToastContainer';
+import { StaffControlView } from './components/Staff/StaffControlView';
+import { WaiterHubView } from './components/WaiterHub/WaiterHubView';
 import { GuestProfile } from './types';
 
 export function DashboardContent() {
   const [currentView, setCurrentView] = useState<
-    'floor' | 'reservations' | 'timeline' | 'calendar' | 'shift_overview' | 'waitlist' | 'waiter_touch' | 'stats' | 'crm'
+    | 'floor'
+    | 'reservations'
+    | 'timeline'
+    | 'calendar'
+    | 'shift_overview'
+    | 'waitlist'
+    | 'waiter_touch'
+    | 'stats'
+    | 'crm'
+    | 'server_view'
+    | 'waiter_hub'
+    | 'staff_control'
   >('floor');
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isWalkInModalOpen, setIsWalkInModalOpen] = useState(false);
@@ -37,6 +53,7 @@ export function DashboardContent() {
   const [isServerMonitorOpen, setIsServerMonitorOpen] = useState(false);
   const [isShiftBriefingOpen, setIsShiftBriefingOpen] = useState(false);
   const [isPrintRunSheetOpen, setIsPrintRunSheetOpen] = useState(false);
+  const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [selectedTableForDetail, setSelectedTableForDetail] = useState<string | null>(null);
   const [preselectedTableIdsForBooking, setPreselectedTableIdsForBooking] = useState<string[]>([]);
   const [selectedGuestForBooking, setSelectedGuestForBooking] = useState<GuestProfile | null>(null);
@@ -62,6 +79,7 @@ export function DashboardContent() {
         onOpenShiftBriefing={() => setIsShiftBriefingOpen(true)}
         onOpenServerMonitor={() => setIsServerMonitorOpen(true)}
         onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)}
+        onOpenStaffManagement={() => setIsStaffModalOpen(true)}
       />
 
       {/* Main Content Area (offset with pl-16 to let sidebar float freely) */}
@@ -90,17 +108,28 @@ export function DashboardContent() {
         )}
 
         {currentView === 'reservations' && (
-          <ReservationsList onOpenBookingModal={() => handleOpenBookingModal()} />
+          <TimelineView
+            onSelectTableForDetails={(tableId) => setSelectedTableForDetail(tableId)}
+            onOpenBookingForSlot={(tableId, timeSlot) => handleOpenBookingModal([tableId], undefined, timeSlot)}
+            onOpenBookingModal={() => handleOpenBookingModal()}
+            defaultMode="list"
+          />
         )}
 
         {currentView === 'waitlist' && <WaitlistView />}
 
-        {currentView === 'waiter_touch' && <WaiterTouchView />}
+        {currentView === 'staff_control' && <StaffControlView />}
+
+        {(currentView === 'waiter_hub' || currentView === 'waiter_touch' || currentView === 'server_view') && (
+          <WaiterHubView />
+        )}
 
         {currentView === 'timeline' && (
           <TimelineView
             onSelectTableForDetails={(tableId) => setSelectedTableForDetail(tableId)}
             onOpenBookingForSlot={(tableId, timeSlot) => handleOpenBookingModal([tableId], undefined, timeSlot)}
+            onOpenBookingModal={() => handleOpenBookingModal()}
+            defaultMode="timeline"
           />
         )}
 
@@ -117,14 +146,12 @@ export function DashboardContent() {
           />
         )}
 
-        {currentView === 'shift_overview' && (
+        {(currentView === 'shift_overview' || currentView === 'stats') && (
           <ShiftOverviewView
             onOpenPrintRunSheet={() => setIsPrintRunSheetOpen(true)}
             onOpenBookingModal={() => handleOpenBookingModal()}
           />
         )}
-
-        {currentView === 'stats' && <StatsOverview />}
       </main>
 
       {/* Modals */}
@@ -173,6 +200,16 @@ export function DashboardContent() {
       <PrintRunSheetModal
         isOpen={isPrintRunSheetOpen}
         onClose={() => setIsPrintRunSheetOpen(false)}
+      />
+
+      <StaffManagementModal
+        isOpen={isStaffModalOpen}
+        onClose={() => setIsStaffModalOpen(false)}
+      />
+
+      {/* Real-time Manager Void Alert Banner */}
+      <ManagerVoidAlertBanner
+        onOpenAuditLogs={() => setIsStaffModalOpen(true)}
       />
 
       {/* Floating Toast Notification Layer */}
