@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 @layer base {
   html, body {
     overflow-x: hidden;
@@ -7,9 +9,16 @@
     width: 100%;
     margin: 0;
     padding: 0;
-    background-color: #0E121B;
-    color: #F8FAFC;
+    background-color: #FAFBFD;
+    color: #1E293B;
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html.dark, body.dark {
+    background-color: #0F1420;
+    color: #F1F5F9;
   }
 
   .font-brand {
@@ -22,10 +31,10 @@
   }
 }
 
-/* Custom minimal twilight scrollbars */
+/* Custom delicate hairline scrollbars */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -35,5 +44,5 @@
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(139, 49, 224, 0.4);
+  background: rgba(14, 165, 233, 0.4);
 }

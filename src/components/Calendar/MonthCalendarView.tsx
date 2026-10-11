@@ -17,7 +17,8 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
   onSelectDateAndGoToTimeline,
   onOpenBookingModal,
 }) => {
-  const { reservations, selectedDate, setSelectedDate, setSelectedTime } = useRestaurant();
+  const { reservations, selectedDate, setSelectedDate, setSelectedTime, theme } = useRestaurant();
+  const isLight = theme === 'light';
 
   // Current viewed month state (defaults to selectedDate's month)
   const [currentYear, setCurrentYear] = useState(() => {
@@ -121,23 +122,33 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
   };
 
   return (
-    <div className="space-y-5 max-w-[1780px] mx-auto pb-12 text-slate-100">
+    <div className={`space-y-5 max-w-[1780px] mx-auto pb-12 transition-colors ${
+      isLight ? 'text-slate-900' : 'text-slate-100'
+    }`}>
       {/* HEADER WITH MONTH NAVIGATION & MONTHLY KPIS */}
-      <div className="bg-[#121622] border border-[#222A3C] rounded-2xl p-4 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+      <div className={`border rounded-2xl p-4 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3 ${
+        isLight ? 'bg-white border-slate-200' : 'bg-[#121622] border-[#222A3C]'
+      }`}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-[#171D2B] border border-[#273248] text-[#C084FC] flex items-center justify-center font-bold shadow-xs">
+          <div className={`w-10 h-10 rounded-2xl border flex items-center justify-center font-bold shadow-xs ${
+            isLight ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-[#171D2B] border-[#273248] text-[#C084FC]'
+          }`}>
             <CalendarIcon className="w-5 h-5 stroke-[1.5]" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="font-bold text-lg text-white">
+              <h2 className={`font-bold text-lg ${isLight ? 'text-slate-900' : 'text-white'}`}>
                 {monthNames[currentMonth]} {currentYear}
               </h2>
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#8B31E0]/20 text-[#C084FC] border border-[#8B31E0]/30">
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                isLight
+                  ? 'bg-sky-50 text-sky-700 border-sky-200'
+                  : 'bg-[#8B31E0]/20 text-[#C084FC] border-[#8B31E0]/30'
+              }`}>
                 PRERES Horizon Calendar™
               </span>
             </div>
-            <p className="text-xs text-slate-400">
+            <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               Clicca su qualsiasi data per aprire la Timeline di quel giorno partendo dal turno di pranzo
             </p>
           </div>
@@ -145,25 +156,35 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
 
         {/* Month Navigation & Action */}
         <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="bg-[#10141F] border border-[#242C3E] px-3.5 py-1.5 rounded-xl">
-            <span className="text-[10px] text-slate-400 font-medium block leading-none">Totale Coperti Mese</span>
-            <span className="font-bold font-mono text-sm text-[#34D399]">{totalMonthCovers} ospiti</span>
+          <div className={`border px-3.5 py-1.5 rounded-xl ${
+            isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#10141F] border-[#242C3E]'
+          }`}>
+            <span className={`text-[10px] font-medium block leading-none ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Totale Coperti Mese</span>
+            <span className={`font-bold font-mono text-sm ${isLight ? 'text-emerald-600' : 'text-[#34D399]'}`}>{totalMonthCovers} ospiti</span>
           </div>
 
-          <div className="flex items-center bg-[#10141F] border border-[#242C3E] rounded-xl p-0.5">
+          <div className={`flex items-center border rounded-xl p-0.5 ${
+            isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-[#10141F] border-[#242C3E]'
+          }`}>
             <button
               onClick={handlePrevMonth}
-              className="p-1.5 rounded-lg hover:bg-white/5 text-slate-300 transition cursor-pointer"
+              className={`p-1.5 rounded-lg transition cursor-pointer ${
+                isLight ? 'hover:bg-slate-200 text-slate-600' : 'hover:bg-white/5 text-slate-300'
+              }`}
               title="Mese precedente"
             >
               <ChevronLeft className="w-4 h-4 stroke-[1.5]" />
             </button>
-            <span className="px-3 text-xs font-bold text-white min-w-[110px] text-center">
+            <span className={`px-3 text-xs font-bold min-w-[110px] text-center ${
+              isLight ? 'text-slate-900' : 'text-white'
+            }`}>
               {monthNames[currentMonth]}
             </span>
             <button
               onClick={handleNextMonth}
-              className="p-1.5 rounded-lg hover:bg-white/5 text-slate-300 transition cursor-pointer"
+              className={`p-1.5 rounded-lg transition cursor-pointer ${
+                isLight ? 'hover:bg-slate-200 text-slate-600' : 'hover:bg-white/5 text-slate-300'
+              }`}
               title="Mese successivo"
             >
               <ChevronRight className="w-4 h-4 stroke-[1.5]" />
@@ -172,7 +193,7 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
 
           <button
             onClick={() => onOpenBookingModal()}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-[#8B31E0] hover:bg-[#7928CA] text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer active:scale-95"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer active:scale-95"
           >
             <Plus className="w-4 h-4 stroke-[2]" />
             <span>Nuova Prenotazione</span>
@@ -181,16 +202,20 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
       </div>
 
       {/* CALENDAR GRID (7 COLUMNS MON-SUN) */}
-      <div className="bg-[#121622] border border-[#222A3C] rounded-2xl p-3 sm:p-5 shadow-sm">
+      <div className={`border rounded-2xl p-3 sm:p-5 shadow-xs ${
+        isLight ? 'bg-white border-slate-200' : 'bg-[#121622] border-[#222A3C]'
+      }`}>
         {/* Days of Week Header */}
-        <div className="grid grid-cols-7 gap-2.5 mb-2.5 text-center text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-[#222A3C] pb-2.5">
+        <div className={`grid grid-cols-7 gap-2.5 mb-2.5 text-center text-xs font-bold uppercase tracking-wider border-b pb-2.5 ${
+          isLight ? 'text-slate-500 border-slate-100' : 'text-slate-400 border-[#222A3C]'
+        }`}>
           <span>Lun</span>
           <span>Mar</span>
           <span>Mer</span>
           <span>Gio</span>
           <span>Ven</span>
-          <span className="text-amber-400">Sab</span>
-          <span className="text-amber-400">Dom</span>
+          <span className={isLight ? 'text-amber-600' : 'text-amber-400'}>Sab</span>
+          <span className={isLight ? 'text-amber-600' : 'text-amber-400'}>Dom</span>
         </div>
 
         {/* Day Cells Matrix */}
@@ -199,7 +224,9 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
           {Array.from({ length: startOffset }).map((_, idx) => (
             <div
               key={`empty_${idx}`}
-              className="min-h-[105px] sm:min-h-[125px] rounded-2xl bg-[#0E121B]/40 border border-dashed border-[#1C2333]/50 opacity-25"
+              className={`min-h-[105px] sm:min-h-[125px] rounded-2xl border border-dashed opacity-25 ${
+                isLight ? 'bg-slate-100/50 border-slate-200' : 'bg-[#0E121B]/40 border-[#1C2333]/50'
+              }`}
             />
           ))}
 
@@ -215,31 +242,47 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
               <div
                 key={dateStr}
                 onClick={() => handleDayClick(dateStr)}
-                className={`min-h-[105px] sm:min-h-[125px] p-3 rounded-2xl border transition-all flex flex-col justify-between cursor-pointer group hover:scale-[1.02] shadow-xs ${
+                className={`min-h-[105px] sm:min-h-[125px] p-3 rounded-2xl border transition-all flex flex-col justify-between cursor-pointer group hover:scale-[1.01] shadow-2xs ${
                   isSelected
-                    ? 'border-[#8B31E0] ring-2 ring-[#8B31E0]/50 bg-[#8B31E0]/20'
+                    ? isLight
+                      ? 'border-sky-300 ring-2 ring-sky-200/60 bg-sky-50/70'
+                      : 'border-sky-700/60 ring-2 ring-sky-500/30 bg-[#1C2538]'
                     : isToday
-                    ? 'border-[#34D399] bg-[#059669]/15'
-                    : 'border-[#222A3C] bg-[#151A26] hover:border-[#8B31E0]/60 hover:bg-[#181F2E]'
+                    ? isLight
+                      ? 'border-emerald-300 bg-emerald-50/40'
+                      : 'border-emerald-700/60 bg-emerald-950/20'
+                    : isLight
+                    ? 'border-slate-200/70 bg-white/80 hover:border-slate-300 hover:bg-white shadow-2xs'
+                    : 'border-[#222A3C] bg-[#151A26] hover:border-slate-700 hover:bg-[#181F2E]'
                 }`}
                 title={`Clicca per aprire la Timeline del ${dayNum} ${monthNames[currentMonth]} (Pranzo 12:00)`}
               >
-                {/* Cell Header: Large Day Number */}
+                {/* Cell Header: Day Number */}
                 <div className="flex items-center justify-between">
                   <span
-                    className={`text-xl sm:text-2xl font-black font-mono px-2 py-0.5 rounded-xl ${
+                    className={`text-lg sm:text-xl font-semibold font-mono px-2 py-0.5 rounded-lg border ${
                       isSelected
-                        ? 'bg-[#8B31E0] text-white shadow-sm'
+                        ? isLight
+                          ? 'bg-sky-50 text-sky-700 border-sky-200/80 shadow-2xs'
+                          : 'bg-sky-950/50 text-sky-300 border-sky-800/50 shadow-2xs'
                         : isToday
-                        ? 'bg-[#059669] text-white shadow-sm'
-                        : 'text-white group-hover:text-[#C084FC] transition-colors'
+                        ? isLight
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80 shadow-2xs'
+                          : 'bg-emerald-950/50 text-emerald-300 border-emerald-800/50 shadow-2xs'
+                        : isLight
+                        ? 'border-transparent text-slate-700 group-hover:text-sky-600 transition-colors'
+                        : 'border-transparent text-slate-200 group-hover:text-sky-400 transition-colors'
                     }`}
                   >
                     {dayNum}
                   </span>
 
                   {isToday && (
-                    <span className="text-[10px] uppercase font-bold text-[#34D399] tracking-wider bg-[#059669]/20 border border-[#059669]/40 px-2 py-0.5 rounded-full">
+                    <span className={`text-[9px] uppercase font-medium tracking-wider px-2 py-0.5 rounded-full border ${
+                      isLight
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                        : 'bg-emerald-950/40 text-emerald-300 border-emerald-800/40'
+                    }`}>
                       Oggi
                     </span>
                   )}
@@ -248,23 +291,33 @@ export const MonthCalendarView: React.FC<MonthCalendarViewProps> = ({
                 {/* Minimal Cover Metrics: Only total booked guests per day */}
                 {stats && stats.totalCovers > 0 ? (
                   <div className="my-auto py-2 text-center">
-                    <div className="text-xl sm:text-2xl font-black font-mono text-white leading-tight">
+                    <div className={`text-xl sm:text-2xl font-black font-mono leading-tight ${
+                      isLight ? 'text-slate-900' : 'text-white'
+                    }`}>
                       {stats.totalCovers}{' '}
-                      <span className="text-xs font-semibold text-slate-300">coperti</span>
+                      <span className={`text-xs font-semibold ${isLight ? 'text-slate-500' : 'text-slate-300'}`}>coperti</span>
                     </div>
-                    <div className="text-[11px] font-semibold text-[#C084FC] mt-0.5 font-mono">
+                    <div className={`text-[11px] font-semibold mt-0.5 font-mono ${
+                      isLight ? 'text-sky-700' : 'text-[#C084FC]'
+                    }`}>
                       {stats.reservationsCount}{' '}
                       {stats.reservationsCount === 1 ? 'prenotazione' : 'prenotazioni'}
                     </div>
                   </div>
                 ) : (
-                  <div className="my-auto py-2 text-center text-xs text-slate-500 font-mono italic">
+                  <div className={`my-auto py-2 text-center text-xs font-mono italic ${
+                    isLight ? 'text-slate-400' : 'text-slate-500'
+                  }`}>
                     0 prenotati
                   </div>
                 )}
 
                 {/* Footer Quick Action */}
-                <div className="pt-1.5 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400 group-hover:text-[#C084FC] font-semibold transition-colors">
+                <div className={`pt-1.5 border-t flex items-center justify-between text-[11px] font-semibold transition-colors ${
+                  isLight
+                    ? 'border-slate-200/60 text-slate-500 group-hover:text-sky-600'
+                    : 'border-white/5 text-slate-400 group-hover:text-[#C084FC]'
+                }`}>
                   <span>Vai a Pranzo (12:00)</span>
                   <ArrowRight className="w-3.5 h-3.5 stroke-[2] group-hover:translate-x-0.5 transition-transform" />
                 </div>

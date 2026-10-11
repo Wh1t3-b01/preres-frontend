@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { RestaurantProvider } from './context/RestaurantContext';
+import { RestaurantProvider, useRestaurant } from './context/RestaurantContext';
 import { Login } from './components/Auth/Login';
 import { ResetPassword } from './components/Auth/ResetPassword';
 import { ProtectedRoute } from './components/Auth/ProtectedRoute';
@@ -30,6 +30,11 @@ import { IconSidebar } from './components/Sidebar/IconSidebar';
 import { ToastContainer } from './components/Common/ToastContainer';
 import { StaffControlView } from './components/Staff/StaffControlView';
 import { WaiterHubView } from './components/WaiterHub/WaiterHubView';
+import { BohManagementView } from './components/BOH/BohManagementView';
+import { MainMenuDrawer } from './components/Navigation/MainMenuDrawer';
+import { SettingsModal } from './components/Modals/SettingsModal';
+import { HelpFeedbackModal } from './components/Modals/HelpFeedbackModal';
+import { ServerSectionsModal } from './components/Modals/ServerSectionsModal';
 import { GuestProfile } from './types';
 
 export function DashboardContent() {
@@ -46,6 +51,7 @@ export function DashboardContent() {
     | 'server_view'
     | 'waiter_hub'
     | 'staff_control'
+    | 'boh_management'
   >('floor');
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isWalkInModalOpen, setIsWalkInModalOpen] = useState(false);
@@ -54,9 +60,18 @@ export function DashboardContent() {
   const [isShiftBriefingOpen, setIsShiftBriefingOpen] = useState(false);
   const [isPrintRunSheetOpen, setIsPrintRunSheetOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
+
+  // Operations Architecture Modals & Drawers
+  const [isMenuDrawerOpen, setIsMenuDrawerOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'general' | 'logging' | 'staff' | 'hardware'>('general');
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [isServerSectionsModalOpen, setIsServerSectionsModalOpen] = useState(false);
+
   const [selectedTableForDetail, setSelectedTableForDetail] = useState<string | null>(null);
   const [preselectedTableIdsForBooking, setPreselectedTableIdsForBooking] = useState<string[]>([]);
   const [selectedGuestForBooking, setSelectedGuestForBooking] = useState<GuestProfile | null>(null);
+  const { theme, tables } = useRestaurant();
   const [preselectedStartTimeForBooking, setPreselectedStartTimeForBooking] = useState<string | undefined>(undefined);
 
   const handleOpenBookingModal = (
@@ -71,7 +86,11 @@ export function DashboardContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0E121B] text-slate-100 flex font-sans selection:bg-[#8B31E0]/30 selection:text-white">
+    <div className={`min-h-screen flex font-sans transition-colors duration-150 ${
+      theme === 'dark'
+        ? 'bg-[#0E121B] text-slate-100 selection:bg-sky-500/30 selection:text-white'
+        : 'bg-[#F8FAFC] text-slate-900 selection:bg-sky-500/20 selection:text-sky-950'
+    }`}>
       {/* Sleek Floating Left Icon Rail */}
       <IconSidebar
         currentView={currentView}
@@ -93,6 +112,7 @@ export function DashboardContent() {
           onOpenDatabaseModal={() => setIsDatabaseModalOpen(true)}
           onOpenServerMonitor={() => setIsServerMonitorOpen(true)}
           onOpenShiftBriefing={() => setIsShiftBriefingOpen(true)}
+          onOpenMenuDrawer={() => setIsMenuDrawerOpen(true)}
         />
 
         {/* Executive Real-Time Operations KPI Bar */}
@@ -104,21 +124,26 @@ export function DashboardContent() {
           <FloorPlanView
             onSelectTableForDetails={(tableId) => setSelectedTableForDetail(tableId)}
             onOpenBookingModalWithTables={(tableIds) => handleOpenBookingModal(tableIds)}
+            onOpenBohEditor={() => setCurrentView('boh_management')}
+            onOpenServerSections={() => setIsServerSectionsModalOpen(true)}
+            onOpenWaitlist={() => setCurrentView('waitlist')}
           />
         )}
 
         {currentView === 'reservations' && (
-          <TimelineView
+          <ReservationsList
+            onOpenBookingModal={(preselectedIds, guest, startTime) => handleOpenBookingModal(preselectedIds, guest, startTime)}
             onSelectTableForDetails={(tableId) => setSelectedTableForDetail(tableId)}
-            onOpenBookingForSlot={(tableId, timeSlot) => handleOpenBookingModal([tableId], undefined, timeSlot)}
-            onOpenBookingModal={() => handleOpenBookingModal()}
-            defaultMode="list"
           />
         )}
 
         {currentView === 'waitlist' && <WaitlistView />}
 
         {currentView === 'staff_control' && <StaffControlView />}
+
+        {currentView === 'boh_management' && (
+          <BohManagementView onNavigateToFloor={() => setCurrentView('floor')} />
+        )}
 
         {(currentView === 'waiter_hub' || currentView === 'waiter_touch' || currentView === 'server_view') && (
           <WaiterHubView />
@@ -210,6 +235,41 @@ export function DashboardContent() {
       {/* Real-time Manager Void Alert Banner */}
       <ManagerVoidAlertBanner
         onOpenAuditLogs={() => setIsStaffModalOpen(true)}
+      />
+
+      {/* Operations Architecture Modals */}
+      <MainMenuDrawer
+        isOpen={isMenuDrawerOpen}
+        onClose={() => setIsMenuDrawerOpen(false)}
+        currentView={currentView}
+        onNavigate={(viewId) => setCurrentView(viewId as any)}
+        onOpenSettings={(tab) => {
+          setSettingsInitialTab(tab || 'general');
+          setIsSettingsModalOpen(true);
+        }}
+        onOpenHelp={() => setIsHelpModalOpen(true)}
+        onOpenServerSections={() => setIsServerSectionsModalOpen(true)}
+        theme={theme}
+      />
+
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        initialTab={settingsInitialTab}
+        theme={theme}
+      />
+
+      <HelpFeedbackModal
+        isOpen={isHelpModalOpen}
+        onClose={() => setIsHelpModalOpen(false)}
+        theme={theme}
+      />
+
+      <ServerSectionsModal
+        isOpen={isServerSectionsModalOpen}
+        onClose={() => setIsServerSectionsModalOpen(false)}
+        tables={tables}
+        theme={theme}
       />
 
       {/* Floating Toast Notification Layer */}

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { RestaurantTable, Reservation, TableCourseStage } from '../../types';
 import { orderSecurityService } from '../../services/orderSecurityService';
 import { menuService } from '../../services/menuService';
+import { getTableSeatConfiguration } from '../../utils/tableSeatLayout';
 import {
   X,
   Plus,
@@ -20,6 +21,7 @@ import {
   CheckCircle2,
   DollarSign,
   Sparkles,
+  Compass,
 } from 'lucide-react';
 
 export type MeatDoneness = 'Al Sangue' | 'Media al Sangue' | 'Media' | 'Media Cotta' | 'Ben Cotta';
@@ -112,15 +114,15 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
 }) => {
   const rawCap = table.id === 'G' ? 2 : (table.capacityOverride || table.capacity || 2);
   const seatsCount = table.id === 'G' ? 2 : (reservation?.partySize || rawCap);
-  const seatPositions = useMemo(() => {
-    return Array.from({ length: seatsCount }, (_, i) => {
-      if (i === 0) return 'Posizione 1 (Sinistra)';
-      if (i === 1) return 'Posizione 2 (Destra)';
-      return `Posizione ${i + 1}`;
-    });
-  }, [seatsCount]);
+  const seatConfig = useMemo(() => {
+    return getTableSeatConfiguration(table.id, seatsCount);
+  }, [table.id, seatsCount]);
 
-  const [activeSeat, setActiveSeat] = useState<string>(seatPositions[0]);
+  const seatPositions = useMemo(() => {
+    return seatConfig.seats.map((s) => s.label);
+  }, [seatConfig]);
+
+  const [activeSeat, setActiveSeat] = useState<string>(() => seatPositions[0] || 'Posizione 1');
   const [activeCategory, setActiveCategory] = useState<ItemCategory>('mains');
 
   // Dynamic menu items loaded from menuService with Fuori Menu support
@@ -382,49 +384,49 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 text-slate-100 animate-in fade-in">
-      <div className="bg-[#10141F] border border-[#273248] rounded-3xl w-full max-w-6xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 text-slate-900 animate-in fade-in">
+      <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-6xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden">
         
         {/* HEADER: TABLE, GUEST & REAL-TIME BILL */}
-        <div className="p-4 sm:p-5 bg-[#121622] border-b border-[#222A3C] flex items-center justify-between gap-4 shrink-0">
+        <div className="p-4 sm:p-5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3">
-            <span className="w-12 h-12 rounded-2xl bg-[#8B31E0]/20 border border-[#8B31E0]/40 text-[#C084FC] flex items-center justify-center font-brand font-bold text-xl shadow-xs">
+            <span className="w-12 h-12 rounded-2xl bg-sky-50 border border-sky-200 text-sky-700 flex items-center justify-center font-brand font-bold text-xl shadow-xs">
               {table.id}
             </span>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold text-white font-brand">
+                <h3 className="text-lg font-bold text-slate-950 font-brand">
                   {table.name}
                 </h3>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 font-semibold font-mono">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold font-mono">
                   {seatsCount} Commensali
                 </span>
                 {table.id === 'G' && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-950/60 text-amber-300 border border-amber-800/60 font-semibold">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-semibold">
                     BOOTH VIP
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-400">
-                Ospite: <strong className="text-white">{reservation?.guestName || 'Commensali al Tavolo'}</strong> · Cameriere in servizio: <strong className="text-[#C084FC]">{serverName}</strong>
+              <p className="text-xs text-slate-500">
+                Ospite: <strong className="text-slate-900">{reservation?.guestName || 'Commensali al Tavolo'}</strong> · Cameriere in servizio: <strong className="text-sky-700">{serverName}</strong>
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
             {/* Live Bill Tracker */}
-            <div className="text-right bg-[#171D2B] border border-[#273248] px-4 py-2 rounded-2xl">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+            <div className="text-right bg-white border border-slate-200 px-4 py-2 rounded-2xl shadow-2xs">
+              <span className="text-[10px] uppercase font-bold text-slate-500 block tracking-wider">
                 Conto Tavolo Live
               </span>
-              <span className="text-xl font-bold font-mono text-[#34D399]">
+              <span className="text-xl font-bold font-mono text-emerald-600">
                 € {totalBill.toLocaleString('it-IT')}
               </span>
             </div>
 
             <button
               onClick={onClose}
-              className="w-10 h-10 rounded-2xl bg-[#171D2B] hover:bg-[#222A3C] border border-[#273248] flex items-center justify-center text-slate-400 hover:text-white transition cursor-pointer"
+              className="w-10 h-10 rounded-2xl bg-white hover:bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -433,14 +435,14 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
 
         {/* NOTIFICATION BANNER */}
         {sentSuccessNotice && (
-          <div className="bg-emerald-950/40 border-b border-emerald-800/60 px-5 py-2.5 flex items-center gap-2 text-emerald-300 text-xs font-semibold animate-in fade-in">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <div className="bg-emerald-50 border-b border-emerald-200 px-5 py-2.5 flex items-center gap-2 text-emerald-800 text-xs font-semibold animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{sentSuccessNotice}</span>
           </div>
         )}
 
         {/* STAGE ADVANCEMENT STRIP (AVANZAMENTO ORDINI) */}
-        <div className="px-5 py-3 bg-[#121724] border-b border-[#222A3C] flex items-center justify-between gap-3 overflow-x-auto">
+        <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-3 overflow-x-auto">
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
               Avanzamento Servizio:
@@ -458,10 +460,10 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
               <button
                 key={stg.id}
                 onClick={() => handleAdvanceStage(stg.id)}
-                className={`px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                className={`px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer border ${
                   currentStage === stg.id
-                    ? 'bg-[#8B31E0] text-white shadow-md'
-                    : 'bg-[#171D2B] text-slate-400 hover:text-white border border-[#242C3E]'
+                    ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white border-sky-600 shadow-xs'
+                    : 'bg-white text-slate-600 hover:text-slate-900 border-slate-200 hover:bg-slate-100/60'
                 }`}
               >
                 {stg.label}
@@ -471,31 +473,59 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
         </div>
 
         {/* MAIN BODY: 2 COLUMNS (LEFT: MENU & SEATS, RIGHT: CURRENT ORDER & RECEIPT) */}
-        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-[#222A3C] overflow-hidden">
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-slate-200 overflow-hidden">
           
           {/* LEFT 7 COLS: SEAT SELECTION & MENU ITEMS */}
-          <div className="lg:col-span-7 p-4 sm:p-5 flex flex-col min-h-0 overflow-y-auto space-y-4">
+          <div className="lg:col-span-7 p-4 sm:p-5 flex flex-col min-h-0 overflow-y-auto space-y-4 bg-white">
             
-            {/* SEAT SELECTOR BUTTONS (COMMENSALI) */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
-                Assegnazione Commensale al Tavolo:
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {seatPositions.map((seat) => (
-                  <button
-                    key={seat}
-                    onClick={() => setActiveSeat(seat)}
-                    className={`p-2.5 rounded-2xl border text-left transition cursor-pointer ${
-                      activeSeat === seat
-                        ? 'bg-[#8B31E0]/20 border-[#8B31E0] text-white shadow-md'
-                        : 'bg-[#171D2B] border-[#273248] text-slate-300 hover:border-slate-500'
-                    }`}
-                  >
-                    <div className="text-[10px] text-slate-400">Posto a Sedere</div>
-                    <div className="font-bold text-xs truncate">{seat}</div>
-                  </button>
-                ))}
+            {/* SEAT SELECTOR BUTTONS (COMMENSALI) WITH WAITER PERSPECTIVE */}
+            <div className="space-y-2 bg-slate-50 border border-slate-200 p-3 rounded-2xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px]">
+                <div className="flex items-center gap-1.5 text-slate-700 font-semibold">
+                  <Compass className="w-3.5 h-3.5 text-sky-600" />
+                  <span>Prospettiva Cameriere: <strong className="text-slate-950">{seatConfig.waiterApproach}</strong></span>
+                </div>
+                <span className="text-[10px] text-emerald-700 font-mono font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  ↻ Senso Orario da Sinistra (1 → 2...)
+                </span>
+              </div>
+
+              <div className="text-[10px] text-slate-600 bg-white p-2 rounded-xl border border-slate-200 leading-relaxed">
+                {seatConfig.clockwiseDescription}
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                {seatConfig.seats.map((seat) => {
+                  const isSelected = activeSeat === seat.label;
+                  return (
+                    <button
+                      key={seat.seatNumber}
+                      onClick={() => setActiveSeat(seat.label)}
+                      className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                        isSelected
+                          ? 'bg-sky-50 border-sky-400 text-sky-950 shadow-xs ring-1 ring-sky-300'
+                          : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className={`text-[10px] font-mono font-bold ${isSelected ? 'text-sky-700' : 'text-slate-500'}`}>
+                          Posto {seat.seatNumber}
+                        </span>
+                        {seat.isOnBench && (
+                          <span className="text-[8px] bg-sky-100 text-sky-800 border border-sky-200 px-1 py-0.2 rounded font-semibold">
+                            Panca
+                          </span>
+                        )}
+                      </div>
+                      <div className="font-bold text-xs truncate mt-0.5 text-slate-900">
+                        {seat.shortLabel}
+                      </div>
+                      <div className="text-[9px] text-slate-500 truncate mt-0.5">
+                        {seat.locationDescription}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -513,12 +543,12 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
                 <button
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer border ${
                     activeCategory === cat.id
                       ? cat.id === 'fuori_menu'
-                        ? 'bg-amber-500 text-slate-950 font-bold shadow-md'
-                        : 'bg-white text-[#10141F] font-bold shadow-md'
-                      : 'bg-[#171D2B] text-slate-400 hover:text-white border border-[#242C3E]'
+                        ? 'bg-amber-100 text-amber-900 border-amber-300 font-bold shadow-xs'
+                        : 'bg-gradient-to-r from-sky-500 to-blue-600 text-white border-sky-600 font-bold shadow-xs'
+                      : 'bg-white text-slate-600 hover:text-slate-900 border-slate-200 hover:bg-slate-50'
                   }`}
                 >
                   {cat.label}
@@ -534,29 +564,29 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
                   onClick={() => handleSelectItem(item as any)}
                   className={`border rounded-2xl p-3.5 text-left transition cursor-pointer flex items-center justify-between group ${
                     item.isSpecial
-                      ? 'bg-gradient-to-br from-[#171D2B] to-[#251e12] border-amber-500/50 hover:border-amber-400'
-                      : 'bg-[#171D2B] hover:bg-[#1E2638] border-[#273248] hover:border-[#8B31E0]/60'
+                      ? 'bg-amber-50/60 border-amber-200 hover:border-amber-300'
+                      : 'bg-white hover:bg-slate-50/70 border-slate-200 hover:border-sky-300 shadow-2xs'
                   }`}
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-xs text-white block group-hover:text-[#C084FC] transition">
+                      <span className="font-bold text-xs text-slate-900 block group-hover:text-sky-700 transition">
                         {item.name}
                       </span>
                       {item.isSpecial && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200">
                           SPECIAL
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] text-slate-400 flex items-center gap-2">
+                    <span className="text-[10px] text-slate-500 flex items-center gap-2">
                       <span className="capitalize">{item.destination === 'bar' ? 'Smistamento Bar 🍸' : 'Cucina 👨‍🍳'}</span>
                       {item.isMeat && (
-                        <span className="text-amber-400 font-bold">• Cottura Obbligatoria</span>
+                        <span className="text-amber-700 font-bold">• Cottura Obbligatoria</span>
                       )}
                     </span>
                   </div>
-                  <span className="font-mono text-sm font-bold text-[#34D399] ml-2 shrink-0">
+                  <span className="font-mono text-sm font-bold text-emerald-600 ml-2 shrink-0">
                     € {item.price}
                   </span>
                 </button>
@@ -565,14 +595,14 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
           </div>
 
           {/* RIGHT 5 COLS: COMANDA CONTO LIVE & BOTTONE INVIO */}
-          <div className="lg:col-span-5 p-4 sm:p-5 flex flex-col justify-between bg-[#121622] min-h-0">
+          <div className="lg:col-span-5 p-4 sm:p-5 flex flex-col justify-between bg-slate-50/50 min-h-0">
             <div className="space-y-3 flex-1 min-h-0 flex flex-col">
-              <div className="flex items-center justify-between pb-2 border-b border-[#222A3C]">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200">
                 <div>
-                  <h4 className="font-bold text-xs text-white uppercase tracking-wider">
+                  <h4 className="font-bold text-xs text-slate-900 uppercase tracking-wider">
                     Riepilogo Comanda ({orderItems.length} articoli)
                   </h4>
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-[10px] text-slate-500">
                     {unspentCount > 0 ? `${unspentCount} voci pronte da inviare` : 'Tutte le voci inviate'}
                   </span>
                 </div>
@@ -582,7 +612,7 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
               {/* ITEMS LIST */}
               <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[220px]">
                 {orderItems.length === 0 ? (
-                  <div className="py-12 text-center text-slate-500 text-xs">
+                  <div className="py-12 text-center text-slate-400 text-xs">
                     Nessun articolo selezionato. Scegli un piatto a sinistra per iniziare la comanda.
                   </div>
                 ) : (
@@ -591,19 +621,19 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
                       key={item.id}
                       className={`p-3 rounded-2xl border text-xs space-y-1 transition ${
                         item.isSent
-                          ? 'bg-[#10141F] border-[#222A3C]'
-                          : 'bg-[#171D2B] border-[#8B31E0]/50 shadow-xs'
+                          ? 'bg-slate-100/60 border-slate-200 opacity-80'
+                          : 'bg-white border-sky-200 shadow-xs ring-1 ring-sky-100'
                       }`}
                     >
                       <div className="flex items-start justify-between">
                         <div>
-                          <span className="font-bold text-white text-xs">{item.name}</span>
-                          <div className="text-[10px] text-slate-400 flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[#C084FC]">{item.seatPosition}</span>
+                          <span className="font-bold text-slate-900 text-xs">{item.name}</span>
+                          <div className="text-[10px] text-slate-500 flex items-center gap-1.5 flex-wrap">
+                            <span className="text-sky-700 font-semibold">{item.seatPosition}</span>
                             <span>•</span>
                             <span>{item.destination === 'bar' ? 'Bar' : 'Cucina'}</span>
                             {item.isSent && (
-                              <span className="text-emerald-400 font-mono">
+                              <span className="text-emerald-600 font-mono font-medium">
                                 (Inviato ore {item.sentAt})
                               </span>
                             )}
@@ -611,10 +641,10 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-white">€ {item.price}</span>
+                          <span className="font-mono font-bold text-slate-900">€ {item.price}</span>
                           <button
                             onClick={() => handleInitiateVoid(item)}
-                            className="text-slate-400 hover:text-rose-400 p-1 rounded-lg transition cursor-pointer"
+                            className="text-slate-400 hover:text-rose-600 p-1 rounded-lg transition cursor-pointer"
                             title={item.isSent ? 'Richiedi Storno Autorizzato' : 'Elimina voce'}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -624,7 +654,7 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
 
                       {/* Doneness & Notes Badge */}
                       {(item.meatDoneness || item.notes) && (
-                        <div className="text-[11px] text-amber-300 bg-amber-950/30 border border-amber-800/40 px-2 py-0.5 rounded-lg flex items-center gap-2">
+                        <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg flex items-center gap-2">
                           {item.meatDoneness && <strong>Cottura: {item.meatDoneness}</strong>}
                           {item.notes && <span>Nota: {item.notes}</span>}
                         </div>
@@ -636,10 +666,10 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
             </div>
 
             {/* SEND CTA & BOTTOM ACTIONS */}
-            <div className="pt-4 border-t border-[#222A3C] space-y-3 shrink-0">
-              <div className="flex items-center justify-between text-xs text-slate-300">
+            <div className="pt-4 border-t border-slate-200 space-y-3 shrink-0">
+              <div className="flex items-center justify-between text-xs text-slate-600">
                 <span>Totale Da Inviare:</span>
-                <span className="font-mono font-bold text-white">
+                <span className="font-mono font-bold text-slate-900">
                   € {orderItems.filter((i) => !i.isSent).reduce((s, i) => s + i.price, 0)}
                 </span>
               </div>
@@ -647,7 +677,7 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
               <button
                 onClick={handleSendOrder}
                 disabled={unspentCount === 0}
-                className="w-full py-3.5 px-4 bg-gradient-to-r from-[#8B31E0] to-[#6E20C0] hover:from-[#9D44F7] hover:to-[#8B31E0] disabled:opacity-40 text-white font-bold text-sm rounded-2xl shadow-lg shadow-[#8B31E0]/30 transition active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+                className="w-full py-3.5 px-4 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 disabled:opacity-40 text-white font-bold text-sm rounded-2xl shadow-xs transition active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
               >
                 <Send className="w-4 h-4" />
                 <span>Invia Comanda a Bar & Cucina ({unspentCount} Voci)</span>
@@ -658,20 +688,20 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
 
         {/* MODAL 1: MANDATORY MEAT DONENESS SELECTION */}
         {pendingMeatItem && (
-          <div className="fixed inset-0 z-60 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-            <div className="bg-[#121622] border-2 border-amber-500/80 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-              <div className="flex items-center gap-3 pb-3 border-b border-[#222A3C]">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+          <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center">
                   <Flame className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-base text-white">Selezione Cottura Carne</h4>
-                  <span className="text-xs text-amber-300">{pendingMeatItem.item.name}</span>
+                  <h4 className="font-bold text-base text-slate-900">Selezione Cottura Carne</h4>
+                  <span className="text-xs text-amber-700">{pendingMeatItem.item.name}</span>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] uppercase font-bold text-slate-400">
+                <label className="text-[10px] uppercase font-bold text-slate-500">
                   Cottura Desiderata per {pendingMeatItem.seat}:
                 </label>
                 <div className="space-y-2">
@@ -681,19 +711,19 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
                       onClick={() => setSelectedDoneness(doneness)}
                       className={`w-full p-2.5 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition cursor-pointer ${
                         selectedDoneness === doneness
-                          ? 'bg-amber-500/20 border-amber-500 text-white'
-                          : 'bg-[#171D2B] border-[#273248] text-slate-300 hover:border-slate-500'
+                          ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-xs'
+                          : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
                       }`}
                     >
                       <span>{doneness}</span>
-                      {selectedDoneness === doneness && <Check className="w-4 h-4 text-amber-400" />}
+                      {selectedDoneness === doneness && <Check className="w-4 h-4 text-amber-600" />}
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-400">
+                <label className="text-[10px] uppercase font-bold text-slate-500">
                   Note Cottura (Opzionali):
                 </label>
                 <input
@@ -701,20 +731,20 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
                   placeholder="Es. Tagliata spessa, poco sale, salsa a parte..."
                   value={meatNotes}
                   onChange={(e) => setMeatNotes(e.target.value)}
-                  className="w-full bg-[#10141F] border border-[#242C3E] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-500 focus:bg-white"
                 />
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2">
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
                 <button
                   onClick={() => setPendingMeatItem(null)}
-                  className="px-4 py-2 bg-[#171D2B] text-slate-300 hover:text-white rounded-xl text-xs font-semibold"
+                  className="px-4 py-2 bg-white text-slate-600 hover:text-slate-900 border border-slate-200 rounded-xl text-xs font-semibold"
                 >
                   Annulla
                 </button>
                 <button
                   onClick={handleConfirmMeatDoneness}
-                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl text-xs shadow-md cursor-pointer"
+                  className="px-5 py-2 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold rounded-xl text-xs shadow-xs cursor-pointer"
                 >
                   Conferma & Procedi
                 </button>
@@ -725,17 +755,17 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
 
         {/* MODAL 2: MANDATORY SIDE DISH PROMPT ("Desidera qualche contorno?") */}
         {isSidePromptOpen && (
-          <div className="fixed inset-0 z-60 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-            <div className="bg-[#121622] border-2 border-[#8B31E0] rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-              <div className="text-center space-y-1.5 pb-2 border-b border-[#222A3C]">
-                <div className="w-12 h-12 rounded-2xl bg-[#8B31E0]/20 text-[#C084FC] flex items-center justify-center mx-auto">
+          <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+              <div className="text-center space-y-1.5 pb-2 border-b border-slate-100">
+                <div className="w-12 h-12 rounded-2xl bg-sky-50 border border-sky-200 text-sky-700 flex items-center justify-center mx-auto">
                   <Utensils className="w-6 h-6 stroke-[1.5]" />
                 </div>
-                <h4 className="text-lg font-brand font-bold text-white">
+                <h4 className="text-lg font-brand font-bold text-slate-900">
                   Desidera qualche contorno?
                 </h4>
-                <p className="text-xs text-slate-400">
-                  Proposta automatica per <strong className="text-white">{promptGuestSeat}</strong> abbinata alla portata principale.
+                <p className="text-xs text-slate-500">
+                  Proposta automatica per <strong className="text-slate-900">{promptGuestSeat}</strong> abbinata alla portata principale.
                 </p>
               </div>
 
@@ -744,24 +774,24 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
                   <button
                     key={side.id}
                     onClick={() => handleAddPromptSide(side as any)}
-                    className="w-full bg-[#171D2B] hover:bg-[#1F273A] border border-[#273248] hover:border-[#8B31E0] rounded-xl p-3 flex items-center justify-between text-left transition cursor-pointer group"
+                    className="w-full bg-slate-50 hover:bg-sky-50/60 border border-slate-200 hover:border-sky-300 rounded-xl p-3 flex items-center justify-between text-left transition cursor-pointer group"
                   >
                     <div>
-                      <span className="font-bold text-xs text-white group-hover:text-[#C084FC]">
+                      <span className="font-bold text-xs text-slate-900 group-hover:text-sky-700">
                         {side.name}
                       </span>
                     </div>
-                    <span className="font-mono text-xs font-bold text-[#34D399]">
-                      +£ {side.price.toFixed(2)}
+                    <span className="font-mono text-xs font-bold text-emerald-600">
+                      +€ {side.price.toFixed(2)}
                     </span>
                   </button>
                 ))}
               </div>
 
-              <div className="pt-2">
+              <div className="pt-2 border-t border-slate-100">
                 <button
                   onClick={() => setIsSidePromptOpen(false)}
-                  className="w-full py-2.5 px-4 bg-[#171D2B] hover:bg-[#222A3C] text-slate-300 font-semibold text-xs rounded-xl border border-[#273248] transition cursor-pointer"
+                  className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 text-slate-600 font-semibold text-xs rounded-xl border border-slate-200 transition cursor-pointer"
                 >
                   Nessun contorno, procedi oltre
                 </button>
@@ -772,35 +802,35 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
 
         {/* MODAL 3: POST-SEND AUTHORIZED VOID REQUEST (BLOCCO POST-SEND) */}
         {itemToVoid && (
-          <div className="fixed inset-0 z-60 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-            <div className="bg-[#121622] border-2 border-rose-600 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-              <div className="flex items-center gap-3 pb-3 border-b border-[#222A3C]">
-                <div className="w-10 h-10 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-400 flex items-center justify-center">
+          <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center">
                   <AlertTriangle className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-base text-white">Storno Articolo Inviato</h4>
-                  <span className="text-xs text-rose-400">Blocco di Sicurezza Post-Send</span>
+                  <h4 className="font-bold text-base text-slate-900">Storno Articolo Inviato</h4>
+                  <span className="text-xs text-rose-600">Blocco di Sicurezza Post-Send</span>
                 </div>
               </div>
 
-              <div className="p-3 bg-[#10141F] rounded-xl border border-[#242C3E] text-xs space-y-1">
-                <div className="text-slate-400">Pietanza da stornare:</div>
-                <div className="font-bold text-white text-sm">{itemToVoid.name}</div>
-                <div className="flex items-center justify-between text-slate-400 pt-1">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
+                <div className="text-slate-500">Pietanza da stornare:</div>
+                <div className="font-bold text-slate-900 text-sm">{itemToVoid.name}</div>
+                <div className="flex items-center justify-between text-slate-500 pt-1">
                   <span>Valore: € {itemToVoid.price}</span>
                   <span>Inviato alle: {itemToVoid.sentAt}</span>
                 </div>
               </div>
 
               {voidError && (
-                <div className="p-2 bg-rose-950/40 border border-rose-800 rounded-xl text-rose-300 text-xs">
+                <div className="p-2 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs">
                   {voidError}
                 </div>
               )}
 
               <div className="space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-400">
+                <label className="text-[10px] uppercase font-bold text-slate-500">
                   Motivazione dello Storno (Obbligatoria):
                 </label>
                 <textarea
@@ -809,20 +839,20 @@ export const SeatOrderModal: React.FC<SeatOrderModalProps> = ({
                   placeholder="Es. Cliente ha cambiato idea, difetto preparazione, rifacimento..."
                   value={voidReason}
                   onChange={(e) => setVoidReason(e.target.value)}
-                  className="w-full bg-[#10141F] border border-[#242C3E] rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-rose-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-rose-500 focus:bg-white"
                 />
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2">
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
                 <button
                   onClick={() => setItemToVoid(null)}
-                  className="px-4 py-2 bg-[#171D2B] text-slate-300 hover:text-white rounded-xl text-xs font-semibold"
+                  className="px-4 py-2 bg-white text-slate-600 hover:text-slate-900 border border-slate-200 rounded-xl text-xs font-semibold"
                 >
                   Annulla
                 </button>
                 <button
                   onClick={handleConfirmAuthorizedVoid}
-                  className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow-md cursor-pointer"
+                  className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs shadow-xs cursor-pointer"
                 >
                   Autorizza Storno & Registra
                 </button>

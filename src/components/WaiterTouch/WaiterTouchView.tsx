@@ -49,7 +49,9 @@ export const WaiterTouchView: React.FC = () => {
     setTableAssistance,
     freeTable,
     updateReservation,
+    theme,
   } = useRestaurant();
+  const isLight = theme === 'light';
 
   // Simulated active waiter profile and punch-in time
   const [currentWaiter, setCurrentWaiter] = useState({
@@ -77,31 +79,43 @@ export const WaiterTouchView: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6 max-w-[1780px] mx-auto pb-16 text-slate-100">
+    <div className={`space-y-6 max-w-[1780px] mx-auto pb-16 transition-colors ${
+      isLight ? 'text-slate-900' : 'text-slate-100'
+    }`}>
       {/* HEADER & SERVER PUNCH-IN INDICATOR */}
-      <div className="bg-[#10141F] border border-[#222A3C] rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className={`border rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
+        isLight ? 'bg-white border-slate-200' : 'bg-[#10141F] border-[#222A3C]'
+      }`}>
         <div>
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h2 className="text-xl font-brand font-bold text-white">
+            <h2 className={`text-xl font-brand font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
               PRERES Waiter Touch™ · Presa Comande Commensali
             </h2>
-            <span className="text-xs bg-[#059669]/20 text-[#34D399] border border-[#059669]/40 font-bold px-2.5 py-0.5 rounded-full font-mono">
+            <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full font-mono border ${
+              isLight
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                : 'bg-[#059669]/20 text-[#34D399] border-[#059669]/40'
+            }`}>
               {activeReservations.length} Tavoli Seduti
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className={`text-xs mt-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
             Gestione comande per commensale (Posizione 1, Posizione 2), cotture obbligatorie, contorni e avanzamento portate.
           </p>
         </div>
 
         {/* Waiter Punch-in Badge */}
-        <div className="flex items-center gap-3 bg-[#121622] border border-[#273248] px-3.5 py-2 rounded-2xl">
-          <div className="w-8 h-8 rounded-xl bg-[#8B31E0]/20 text-[#C084FC] flex items-center justify-center font-bold">
+        <div className={`flex items-center gap-3 px-3.5 py-2 rounded-2xl border ${
+          isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#121622] border-[#273248]'
+        }`}>
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold ${
+            isLight ? 'bg-sky-50 text-sky-700 border border-sky-200' : 'bg-[#8B31E0]/20 text-[#C084FC]'
+          }`}>
             <User className="w-4 h-4" />
           </div>
           <div className="text-xs">
-            <span className="font-bold text-white block">Cameriere: {currentWaiter.name}</span>
-            <span className="text-[10px] text-[#34D399] font-mono">
+            <span className={`font-bold block ${isLight ? 'text-slate-900' : 'text-white'}`}>Cameriere: {currentWaiter.name}</span>
+            <span className={`text-[10px] font-mono ${isLight ? 'text-emerald-700' : 'text-[#34D399]'}`}>
               ⚡ Punch-in attivo ore {currentWaiter.punchInTime}
             </span>
           </div>
@@ -122,10 +136,14 @@ export const WaiterTouchView: React.FC = () => {
           <button
             key={z.id}
             onClick={() => setSelectedZoneFilter(z.id)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition cursor-pointer border ${
               selectedZoneFilter === z.id
-                ? 'bg-[#8B31E0] text-white shadow-xs'
-                : 'bg-[#121622] text-slate-300 border border-[#242C3E] hover:text-white'
+                ? isLight
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-2xs font-bold'
+                  : 'bg-[#8B31E0] text-white border-[#8B31E0] shadow-xs'
+                : isLight
+                ? 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                : 'bg-[#121622] text-slate-300 border-[#242C3E] hover:text-white'
             }`}
           >
             {z.label}
@@ -149,8 +167,14 @@ export const WaiterTouchView: React.FC = () => {
           return (
             <div
               key={table.id}
-              className={`rounded-3xl p-5 border transition-all shadow-sm flex flex-col justify-between gap-4 ${
-                res
+              className={`rounded-3xl p-5 border transition-all shadow-xs flex flex-col justify-between gap-4 ${
+                isLight
+                  ? res
+                    ? table.needsAssistance
+                      ? 'bg-white border-rose-400 shadow-md ring-1 ring-rose-400'
+                      : 'bg-white border-emerald-300 shadow-xs'
+                    : 'bg-white border-slate-200 opacity-80'
+                  : res
                   ? table.needsAssistance
                     ? 'bg-rose-950/30 border-rose-500/80 shadow-[0_0_20px_rgba(225,29,72,0.25)] ring-1 ring-rose-500/50'
                     : 'bg-[#121622] border-[#273248] hover:border-[#8B31E0]/60'
@@ -161,14 +185,16 @@ export const WaiterTouchView: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <span className="w-10 h-10 rounded-2xl bg-[#171D2B] text-[#C084FC] border border-[#2E3B54] font-bold text-base flex items-center justify-center font-brand">
+                    <span className={`w-10 h-10 rounded-2xl border font-bold text-base flex items-center justify-center font-brand ${
+                      isLight ? 'bg-slate-50 text-slate-900 border-slate-200' : 'bg-[#171D2B] text-[#C084FC] border-[#2E3B54]'
+                    }`}>
                       {table.tableNumber}
                     </span>
                     <div>
-                      <h4 className="font-semibold text-sm text-white">
+                      <h4 className={`font-semibold text-sm ${isLight ? 'text-slate-900' : 'text-white'}`}>
                         {res ? res.guestName : `Tavolo ${table.tableNumber}`}
                       </h4>
-                      <span className="text-[11px] text-slate-400 uppercase font-mono">
+                      <span className={`text-[11px] uppercase font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                         {table.zone} · {table.capacityOverride || table.capacity} pax
                       </span>
                     </div>
@@ -176,25 +202,35 @@ export const WaiterTouchView: React.FC = () => {
 
                   {res ? (
                     <div className="text-right">
-                      <span className="text-xs font-bold font-mono bg-[#059669]/20 text-[#34D399] border border-[#059669]/40 px-2.5 py-0.5 rounded-full block">
+                      <span className={`text-xs font-bold font-mono px-2.5 py-0.5 rounded-full border block ${
+                        isLight
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                          : 'bg-[#059669]/20 text-[#34D399] border-[#059669]/40'
+                      }`}>
                         {res.partySize} px · Seduti
                       </span>
-                      <span className="text-[10px] font-mono text-[#C084FC] font-bold mt-1 block">
+                      <span className={`text-[10px] font-mono font-bold mt-1 block ${
+                        isLight ? 'text-emerald-700' : 'text-[#C084FC]'
+                      }`}>
                         Comanda: € {comandaTotal.toFixed(2)}
                       </span>
                     </div>
                   ) : (
-                    <span className="text-xs font-semibold text-slate-500">Libero</span>
+                    <span className={`text-xs font-semibold ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>Libero</span>
                   )}
                 </div>
 
                 {/* VIP / ATTENTION ALERTS */}
                 {guestProfile?.attentionAlert?.isAttentionRequired && (
                   <div
-                    className={`mt-2.5 p-2 rounded-xl text-xs flex items-center gap-1.5 font-semibold ${
-                      guestProfile.attentionAlert.alertColor === 'red'
-                        ? 'bg-rose-950/40 border border-rose-500/50 text-rose-300 animate-pulse'
-                        : 'bg-emerald-950/40 border border-emerald-500/40 text-emerald-300'
+                    className={`mt-2.5 p-2 rounded-xl text-xs flex items-center gap-1.5 font-semibold border ${
+                      isLight
+                        ? guestProfile.attentionAlert.alertColor === 'red'
+                          ? 'bg-rose-50 border-rose-200 text-rose-800'
+                          : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                        : guestProfile.attentionAlert.alertColor === 'red'
+                        ? 'bg-rose-950/40 border-rose-500/50 text-rose-300 animate-pulse'
+                        : 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
                     }`}
                   >
                     <span>{guestProfile.attentionAlert.alertColor === 'red' ? '🔴 ATTENZIONE OSPITE:' : '🟢 VIP OSPITE:'}</span>
@@ -204,11 +240,15 @@ export const WaiterTouchView: React.FC = () => {
 
                 {/* ALLERGIES */}
                 {guestProfile?.dietaryRestrictions && guestProfile.dietaryRestrictions.length > 0 && (
-                  <div className="mt-2 p-2 bg-rose-950/20 border border-rose-800/40 rounded-xl text-xs text-rose-300 space-y-1">
-                    <span className="text-[10px] uppercase font-bold text-rose-400 block">Allergie Segnalate:</span>
+                  <div className={`mt-2 p-2 border rounded-xl text-xs space-y-1 ${
+                    isLight ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-rose-950/20 border-rose-800/40 text-rose-300'
+                  }`}>
+                    <span className={`text-[10px] uppercase font-bold block ${isLight ? 'text-rose-700' : 'text-rose-400'}`}>Allergie Segnalate:</span>
                     <div className="flex flex-wrap gap-1">
                       {guestProfile.dietaryRestrictions.map((d, i) => (
-                        <span key={i} className="px-1.5 py-0.5 bg-rose-900/60 rounded text-[10px] font-bold">
+                        <span key={i} className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                          isLight ? 'bg-rose-100 border-rose-300 text-rose-800' : 'bg-rose-900/60 border-rose-700 text-white'
+                        }`}>
                           ⚠️ {d}
                         </span>
                       ))}
@@ -217,8 +257,10 @@ export const WaiterTouchView: React.FC = () => {
                 )}
 
                 {res?.notes && (
-                  <div className="mt-2 p-2 bg-[#171D2B] rounded-xl border border-[#273248] text-[11px] text-slate-300">
-                    <strong className="text-amber-300">Note:</strong> {res.notes}
+                  <div className={`mt-2 p-2 rounded-xl border text-[11px] ${
+                    isLight ? 'bg-amber-50/70 border-amber-200 text-amber-900' : 'bg-[#171D2B] border-[#273248] text-slate-300'
+                  }`}>
+                    <strong className={isLight ? 'text-amber-800' : 'text-amber-300'}>Note:</strong> {res.notes}
                   </div>
                 )}
               </div>
@@ -227,13 +269,19 @@ export const WaiterTouchView: React.FC = () => {
               {res ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                    <span className={`text-[10px] font-semibold uppercase tracking-wider block ${
+                      isLight ? 'text-slate-500' : 'text-slate-400'
+                    }`}>
                       Avanzamento Cucina:
                     </span>
                     {/* BUTTON TO OPEN SEAT-BY-SEAT POS */}
                     <button
                       onClick={() => setActiveComandaTable({ table, reservation: res })}
-                      className="px-3 py-1 bg-[#8B31E0] hover:bg-[#7928CA] text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+                      className={`px-3 py-1 text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                        isLight
+                          ? 'bg-sky-600 hover:bg-sky-500 text-white'
+                          : 'bg-[#8B31E0] hover:bg-[#7928CA] text-white'
+                      }`}
                     >
                       <FileText className="w-3.5 h-3.5" />
                       <span>Prendi Comanda / Piatti ➔</span>
@@ -250,14 +298,22 @@ export const WaiterTouchView: React.FC = () => {
                         <button
                           key={stage.id}
                           onClick={() => setTableCourseStage(table.id, stage.id)}
-                          className={`p-2 rounded-xl text-left text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                          className={`p-2 rounded-xl text-left text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer active:scale-95 border ${
                             isCurrent
                               ? isBill
-                                ? 'bg-amber-500 text-slate-950 font-bold border border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+                                ? isLight
+                                  ? 'bg-amber-500 text-slate-950 font-bold border-amber-500 shadow-2xs'
+                                  : 'bg-amber-500 text-slate-950 font-bold border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
                                 : isClearing
-                                ? 'bg-[#059669] text-white font-bold border border-[#059669]'
-                                : 'bg-[#8B31E0] text-white shadow-md border border-[#A855F7]/40 ring-1 ring-[#A855F7]/30'
-                              : 'bg-[#171D2B] text-slate-300 border border-[#273248] hover:bg-[#20273A] hover:text-white'
+                                ? isLight
+                                  ? 'bg-emerald-600 text-white font-bold border-emerald-600'
+                                  : 'bg-[#059669] text-white font-bold border-[#059669]'
+                                : isLight
+                                ? 'bg-sky-50 text-sky-800 font-bold border-sky-300 shadow-2xs'
+                                : 'bg-[#8B31E0] text-white shadow-md border-[#A855F7]/40 ring-1 ring-[#A855F7]/30'
+                              : isLight
+                              ? 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
+                              : 'bg-[#171D2B] text-slate-300 border-[#273248] hover:bg-[#20273A] hover:text-white'
                           }`}
                         >
                           <span className="text-sm">{stage.icon}</span>
@@ -268,12 +324,16 @@ export const WaiterTouchView: React.FC = () => {
                   </div>
 
                   {/* Assistance Alert & Quick Free Table */}
-                  <div className="pt-2 border-t border-[#222A3C] flex items-center justify-between gap-2">
+                  <div className={`pt-2 border-t flex items-center justify-between gap-2 ${
+                    isLight ? 'border-slate-200' : 'border-[#222A3C]'
+                  }`}>
                     <button
                       onClick={() => setTableAssistance(table.id, !table.needsAssistance, 'Richiesta assistenza')}
                       className={`text-xs px-3 py-1.5 rounded-xl border transition flex items-center gap-1 cursor-pointer ${
                         table.needsAssistance
                           ? 'bg-rose-600 text-white font-bold border-rose-400 animate-pulse'
+                          : isLight
+                          ? 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
                           : 'bg-[#10141F] text-slate-400 border-[#242C3E] hover:text-white'
                       }`}
                     >
@@ -283,15 +343,19 @@ export const WaiterTouchView: React.FC = () => {
 
                     <button
                       onClick={() => freeTable(table.id)}
-                      className="text-xs px-3 py-1.5 rounded-xl bg-[#171D2B] hover:bg-[#20273A] text-slate-300 border border-[#273248] transition cursor-pointer"
+                      className={`text-xs px-3 py-1.5 rounded-xl border transition cursor-pointer ${
+                        isLight
+                          ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                          : 'bg-[#171D2B] hover:bg-[#20273A] text-slate-300 border-[#273248]'
+                      }`}
                     >
                       Libera Tavolo
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-4 border-t border-[#222A3C]">
-                  <p className="text-xs text-slate-500 italic">Tavolo attualmente libero.</p>
+                <div className={`text-center py-4 border-t ${isLight ? 'border-slate-100' : 'border-[#222A3C]'}`}>
+                  <p className={`text-xs italic ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>Tavolo attualmente libero.</p>
                 </div>
               )}
             </div>

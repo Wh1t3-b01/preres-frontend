@@ -16,7 +16,10 @@ export const WalkInModal: React.FC<WalkInModalProps> = ({ isOpen, onClose }) => 
     selectedDate,
     selectedTime,
     quickSeatWalkIn,
+    theme,
   } = useRestaurant();
+
+  const isLight = theme === 'light';
 
   const [guestName, setGuestName] = useState('Ospite Walk-in');
   const [partySize, setPartySize] = useState<number>(2);
@@ -74,26 +77,38 @@ export const WalkInModal: React.FC<WalkInModalProps> = ({ isOpen, onClose }) => 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 text-slate-100 animate-in fade-in">
-      <div className="bg-[#121622] border border-[#273248] rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 animate-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
+      <div className={`rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 animate-in zoom-in-95 duration-150 border ${
+        isLight
+          ? 'bg-white border-slate-200 text-slate-900'
+          : 'bg-[#121622] border-[#273248] text-slate-100'
+      }`}>
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#222A3C] pb-3.5">
+        <div className={`flex items-center justify-between border-b pb-3.5 ${
+          isLight ? 'border-slate-200' : 'border-[#222A3C]'
+        }`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center font-bold shadow-xs">
-              <Zap className="w-5 h-5 fill-amber-400 text-amber-400" />
+            <div className={`w-10 h-10 rounded-2xl border flex items-center justify-center font-bold shadow-xs ${
+              isLight
+                ? 'bg-amber-50 border-amber-200 text-amber-700'
+                : 'bg-amber-500/20 border-amber-500/40 text-amber-400'
+            }`}>
+              <Zap className="w-5 h-5 fill-amber-500 text-amber-500" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">
+              <h3 className={`text-base font-bold ${isLight ? 'text-slate-950' : 'text-white'}`}>
                 Accomoda Walk-in Immediato
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                 Ospiti arrivati alla porta · Assegnazione tavolo e timer live
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/5 transition cursor-pointer"
+            className={`p-1.5 rounded-xl transition cursor-pointer ${
+              isLight ? 'text-slate-400 hover:text-slate-900 hover:bg-slate-100' : 'text-slate-400 hover:text-white hover:bg-white/5'
+            }`}
           >
             <X className="w-5 h-5 stroke-[1.5]" />
           </button>
@@ -101,13 +116,13 @@ export const WalkInModal: React.FC<WalkInModalProps> = ({ isOpen, onClose }) => 
 
         {successCode ? (
           <div className="text-center py-6 space-y-4">
-            <div className="w-14 h-14 bg-[#059669]/20 border border-[#059669]/40 text-[#34D399] rounded-2xl flex items-center justify-center mx-auto">
+            <div className="w-14 h-14 bg-emerald-50 border border-emerald-300 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-8 h-8 stroke-[1.5]" />
             </div>
             <div>
-              <h4 className="font-bold text-base text-white">Ospiti Seduti al Tavolo!</h4>
-              <p className="text-xs text-slate-300 mt-1">
-                Codice Walk-in: <strong className="text-[#C084FC] font-mono">{successCode}</strong> · Timer servizio attivo in sala.
+              <h4 className={`font-bold text-base ${isLight ? 'text-slate-900' : 'text-white'}`}>Ospiti Seduti al Tavolo!</h4>
+              <p className={`text-xs mt-1 ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+                Codice Walk-in: <strong className={isLight ? 'text-sky-700 font-mono font-bold' : 'text-[#C084FC] font-mono'}>{successCode}</strong> · Timer servizio attivo in sala.
               </p>
             </div>
             <button
@@ -115,7 +130,7 @@ export const WalkInModal: React.FC<WalkInModalProps> = ({ isOpen, onClose }) => 
                 setSuccessCode(null);
                 onClose();
               }}
-              className="px-6 py-2.5 bg-[#8B31E0] hover:bg-[#7928CA] text-white font-semibold rounded-xl text-xs transition cursor-pointer shadow-md shadow-[#8B31E0]/25"
+              className="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold rounded-xl text-xs transition cursor-pointer shadow-sm"
             >
               OK, Torna alla Sala
             </button>
@@ -124,7 +139,9 @@ export const WalkInModal: React.FC<WalkInModalProps> = ({ isOpen, onClose }) => 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Guest Name */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1.5 ${
+                isLight ? 'text-slate-600' : 'text-slate-300'
+              }`}>
                 Nome o Riferimento Ospite
               </label>
               <input
@@ -133,14 +150,20 @@ export const WalkInModal: React.FC<WalkInModalProps> = ({ isOpen, onClose }) => 
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
                 placeholder="Es. Walk-in Mario Rossi"
-                className="w-full bg-[#10141F] border border-[#242C3E] rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#8B31E0]"
+                className={`w-full rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-sky-500 border ${
+                  isLight
+                    ? 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400'
+                    : 'bg-[#10141F] border-[#242C3E] text-white placeholder-slate-500'
+                }`}
               />
             </div>
 
             {/* Party Size */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1.5 ${
+                  isLight ? 'text-slate-600' : 'text-slate-300'
+                }`}>
                   Numero di Persone
                 </label>
                 <div className="flex items-center gap-1">
@@ -149,10 +172,14 @@ export const WalkInModal: React.FC<WalkInModalProps> = ({ isOpen, onClose }) => 
                       key={num}
                       type="button"
                       onClick={() => setPartySize(num)}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold font-mono transition cursor-pointer ${
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold font-mono transition cursor-pointer border ${
                         partySize === num
-                          ? 'bg-[#8B31E0] text-white shadow-xs'
-                          : 'bg-[#10141F] border border-[#242C3E] text-slate-300 hover:text-white hover:bg-[#171D2B]'
+                          ? isLight
+                            ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
+                            : 'bg-[#8B31E0] text-white border-[#8B31E0] shadow-xs'
+                          : isLight
+                          ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                          : 'bg-[#10141F] border-[#242C3E] text-slate-300 hover:text-white hover:bg-[#171D2B]'
                       }`}
                     >
                       {num}p
@@ -162,7 +189,9 @@ export const WalkInModal: React.FC<WalkInModalProps> = ({ isOpen, onClose }) => 
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1.5 ${
+                  isLight ? 'text-slate-600' : 'text-slate-300'
+                }`}>
                   Coperti Personalizzati
                 </label>
                 <input
@@ -171,18 +200,24 @@ export const WalkInModal: React.FC<WalkInModalProps> = ({ isOpen, onClose }) => 
                   max="20"
                   value={partySize}
                   onChange={(e) => setPartySize(Number(e.target.value))}
-                  className="w-full bg-[#10141F] border border-[#242C3E] rounded-xl px-3.5 py-2 text-xs text-white font-bold font-mono focus:outline-none focus:border-[#8B31E0]"
+                  className={`w-full rounded-xl px-3.5 py-2 text-xs font-bold font-mono focus:outline-none focus:border-sky-500 border ${
+                    isLight
+                      ? 'bg-slate-50 border-slate-200 text-slate-900'
+                      : 'bg-[#10141F] border-[#242C3E] text-white'
+                  }`}
                 />
               </div>
             </div>
 
             {/* Table Selector */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1.5 ${
+                isLight ? 'text-slate-600' : 'text-slate-300'
+              }`}>
                 Tavolo Libero di Destinazione
               </label>
               {availableTables.length === 0 ? (
-                <div className="p-3 bg-rose-950/20 border border-rose-800/40 rounded-xl text-xs text-rose-300">
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700">
                   Nessun tavolo libero in questo momento per {partySize} persone.
                 </div>
               ) : (
@@ -194,12 +229,16 @@ export const WalkInModal: React.FC<WalkInModalProps> = ({ isOpen, onClose }) => 
                       onClick={() => setSelectedTableId(opt.tableId)}
                       className={`p-2.5 rounded-xl border text-left text-xs transition flex justify-between items-center cursor-pointer ${
                         selectedTableId === opt.tableId
-                          ? 'bg-[#8B31E0]/20 border-[#8B31E0] text-white font-bold ring-2 ring-[#8B31E0]/30 shadow-xs'
+                          ? isLight
+                            ? 'bg-sky-50 border-sky-400 text-sky-900 font-bold ring-2 ring-sky-200 shadow-xs'
+                            : 'bg-[#8B31E0]/20 border-[#8B31E0] text-white font-bold ring-2 ring-[#8B31E0]/30 shadow-xs'
+                          : isLight
+                          ? 'bg-slate-50 border-slate-200 text-slate-800 hover:border-sky-300'
                           : 'bg-[#10141F] border-[#242C3E] text-slate-300 hover:border-[#8B31E0]/50'
                       }`}
                     >
                       <span className="truncate">{opt.tableName}</span>
-                      <span className="text-[10px] text-slate-400 font-mono shrink-0 ml-1">
+                      <span className={`text-[10px] font-mono shrink-0 ml-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                         {opt.capacity} px
                       </span>
                     </button>
@@ -210,7 +249,9 @@ export const WalkInModal: React.FC<WalkInModalProps> = ({ isOpen, onClose }) => 
 
             {/* Notes */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className={`block text-[11px] font-semibold uppercase tracking-wider mb-1.5 ${
+                isLight ? 'text-slate-600' : 'text-slate-300'
+              }`}>
                 Note Rapide
               </label>
               <input
@@ -218,25 +259,35 @@ export const WalkInModal: React.FC<WalkInModalProps> = ({ isOpen, onClose }) => 
                 placeholder="Es. Aperitivo veloce, solo drink, fretta..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full bg-[#10141F] border border-[#242C3E] rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#8B31E0]"
+                className={`w-full rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-sky-500 border ${
+                  isLight
+                    ? 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400'
+                    : 'bg-[#10141F] border-[#242C3E] text-white placeholder-slate-500'
+                }`}
               />
             </div>
 
             {/* Actions */}
-            <div className="pt-3 border-t border-[#222A3C] flex items-center justify-end gap-2.5">
+            <div className={`pt-3 border-t flex items-center justify-end gap-2.5 ${
+              isLight ? 'border-slate-200' : 'border-[#222A3C]'
+            }`}>
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 bg-[#171D2B] hover:bg-[#20273A] border border-[#273248] text-slate-300 font-semibold rounded-xl text-xs transition cursor-pointer"
+                className={`px-4 py-2 border font-semibold rounded-xl text-xs transition cursor-pointer ${
+                  isLight
+                    ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                    : 'bg-[#171D2B] hover:bg-[#20273A] border-[#273248] text-slate-300'
+                }`}
               >
                 Annulla
               </button>
               <button
                 type="submit"
                 disabled={!selectedTableId}
-                className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl text-xs transition shadow-md shadow-amber-500/20 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer active:scale-95"
+                className="px-5 py-2.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-1.5 disabled:opacity-50 cursor-pointer active:scale-95"
               >
-                <Zap className="w-3.5 h-3.5 fill-slate-950 text-slate-950" />
+                <Zap className="w-3.5 h-3.5 fill-current" />
                 <span>Accomoda Ora</span>
               </button>
             </div>

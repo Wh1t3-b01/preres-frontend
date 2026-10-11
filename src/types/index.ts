@@ -113,6 +113,7 @@ export interface RestaurantTable {
   width?: number;
   height?: number;
   rotation?: number; // 0, 90, 180, 270 deg
+  chairLayout?: string;
   // Service & Course State
   courseStage?: TableCourseStage;
   courseStartedAt?: string;
@@ -183,7 +184,7 @@ export interface TimeSlotOption {
   memberTableIds: string[];
   zone: TableZone;
   fitScore: number;
-  sectionId?: 'section_1' | 'section_2' | 'section_3';
+  sectionId?: 'section_1' | 'section_2' | 'section_3' | 'bar_waiting';
   sectionName?: string;
   serverName?: string;
   sectionArrivalsAtSlot?: number;

@@ -258,26 +258,26 @@ export const DatabaseSchemaModal: React.FC<DatabaseSchemaModalProps> = ({ isOpen
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-[#FDFBF7] border-2 border-[#1E3A2F]/30 rounded-3xl p-6 md:p-8 max-w-3xl w-full shadow-2xl space-y-5 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-white border border-slate-200 text-slate-900 rounded-3xl p-6 md:p-8 max-w-3xl w-full shadow-2xl space-y-5 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#1E3A2F]/15 pb-4">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#1E3A2F] text-amber-100 flex items-center justify-center font-bold shadow-xs">
+            <div className="w-10 h-10 rounded-2xl bg-sky-50 border border-sky-200 text-sky-700 flex items-center justify-center font-bold shadow-xs">
               <Database className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-xl font-brand font-bold text-[#1E3A2F]">
+              <h3 className="text-xl font-brand font-bold text-slate-950">
                 Schema Database Supabase & PostgreSQL
               </h3>
-              <p className="text-xs text-[#1E3A2F]/70">
+              <p className="text-xs text-slate-500">
                 DDL, Transazioni ACID, Realtime Replication e Politiche RLS
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-stone-400 hover:text-[#1E3A2F] p-1.5 rounded-xl hover:bg-[#1E3A2F]/5 transition"
+            className="text-slate-400 hover:text-slate-900 p-1.5 rounded-xl hover:bg-slate-100 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -285,60 +285,60 @@ export const DatabaseSchemaModal: React.FC<DatabaseSchemaModalProps> = ({ isOpen
 
         {/* Feature Highlights */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          <div className="bg-white border border-[#1E3A2F]/15 rounded-xl p-3 space-y-1">
-            <div className="font-bold text-[#1E3A2F] flex items-center gap-1.5">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1">
+            <div className="font-bold text-slate-900 flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
               <span>Transazioni ACID</span>
             </div>
-            <p className="text-[11px] text-stone-500">
+            <p className="text-[11px] text-slate-500">
               Blocco rigido double-booking con query di sovrapposizione temporale.
             </p>
           </div>
 
-          <div className="bg-white border border-[#1E3A2F]/15 rounded-xl p-3 space-y-1">
-            <div className="font-bold text-[#1E3A2F] flex items-center gap-1.5">
-              <Zap className="w-4 h-4 text-amber-600" />
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1">
+            <div className="font-bold text-slate-900 flex items-center gap-1.5">
+              <Zap className="w-4 h-4 text-amber-500" />
               <span>Supabase Realtime</span>
             </div>
-            <p className="text-[11px] text-stone-500">
+            <p className="text-[11px] text-slate-500">
               Sincronizzazione bi-direzionale via WebSocket per tutti i tablet in sala.
             </p>
           </div>
 
-          <div className="bg-white border border-[#1E3A2F]/15 rounded-xl p-3 space-y-1">
-            <div className="font-bold text-[#1E3A2F] flex items-center gap-1.5">
-              <Database className="w-4 h-4 text-[#6B3FA0]" />
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1">
+            <div className="font-bold text-slate-900 flex items-center gap-1.5">
+              <Database className="w-4 h-4 text-sky-600" />
               <span>Tavoli Accorpati</span>
             </div>
-            <p className="text-[11px] text-stone-500">
-              Mappatura array <code className="font-mono">TEXT[]</code> per i maxi-tavoli uniti.
+            <p className="text-[11px] text-slate-500">
+              Mappatura array <code className="font-mono text-sky-700">TEXT[]</code> per i maxi-tavoli uniti.
             </p>
           </div>
         </div>
 
         {/* SQL Code View */}
-        <div className="flex-1 min-h-[260px] bg-[#1E110B] text-amber-100 rounded-2xl p-4 overflow-y-auto font-mono text-xs border border-amber-900/40 shadow-inner">
+        <div className="flex-1 min-h-[260px] bg-slate-950 text-slate-100 rounded-2xl p-4 overflow-y-auto font-mono text-xs border border-slate-800 shadow-inner">
           <pre className="whitespace-pre-wrap">{SQL_SCHEMA_TEXT}</pre>
         </div>
 
         {/* Footer Actions */}
-        <div className="pt-3 border-t border-[#1E3A2F]/15 flex items-center justify-between gap-3">
-          <span className="text-[11px] text-stone-500">
+        <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-3">
+          <span className="text-[11px] text-slate-500">
             Eseguibile direttamente nell'SQL Editor di Supabase
           </span>
           <div className="flex items-center gap-2">
             <button
               onClick={handleDownload}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-stone-200 hover:bg-stone-300 text-[#1E3A2F] font-semibold text-xs rounded-xl transition"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Scarica .sql</span>
             </button>
             <button
               onClick={handleCopy}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#1E3A2F] hover:bg-[#152a22] text-amber-100 font-bold text-xs rounded-xl transition shadow-xs"
+              className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl transition shadow-xs cursor-pointer"
             >
-              {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+              {copied ? <Check className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4" />}
               <span>{copied ? 'Copiato negli Appunti!' : 'Copia SQL per Supabase'}</span>
             </button>
           </div>

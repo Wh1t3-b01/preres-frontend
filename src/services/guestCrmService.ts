@@ -303,6 +303,16 @@ export const guestCrmService = {
     }
   },
 
+  createProfile(profileData: Partial<GuestProfile> & { name: string }): GuestProfile {
+    return this.upsertProfile(profileData);
+  },
+
+  updateProfile(id: string, updates: Partial<GuestProfile>): GuestProfile | undefined {
+    const profile = this.getProfileById(id);
+    if (!profile) return undefined;
+    return this.upsertProfile({ ...profile, ...updates, id });
+  },
+
   recordVisitCompleted(
     guestName: string,
     guestPhone?: string,

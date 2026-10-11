@@ -7,6 +7,8 @@ import {
   getAvailableSingleAndGroupTables,
   findSmartMergeCombinations,
   validateAdvanceBookingSlotLimits,
+  findBestAutoAssignedTable,
+  getSectionRoundRobinOrder,
   LUNCH_SLOTS,
   DINNER_SLOTS,
   DINING_SECTIONS,
@@ -42,14 +44,16 @@ interface BookingModalProps {
 }
 
 const COMMON_TAGS = [
-  'VIP',
+  'Tavolo Tranquillo 🤫',
+  'Vino Preferito 🍷',
+  'Amico del Proprietario ⭐',
+  'VIP 💎',
   'Compleanno 🎂',
   'Anniversario 🥂',
   'Cena Aziendale 💼',
   'Senza Glutine 🌾',
   'Allergie ⚠️',
   'Seggiolone 👶',
-  'Romantico 🕯️',
 ];
 
 const POPULAR_TIME_SLOTS = [
@@ -77,7 +81,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     selectedDate: globalDate,
     selectedTime: globalTime,
     createReservation,
+    theme,
   } = useRestaurant();
+
+  const isLight = theme === 'light';
 
   const [guestName, setGuestName] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
@@ -96,6 +103,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [selectedTableOption, setSelectedTableOption] = useState<string>('');
   const [selectedMergeCandidate, setSelectedMergeCandidate] = useState<RecommendedMerge | null>(null);
   const [notes, setNotes] = useState('');
+  const [guestbookNotes, setGuestbookNotes] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [successBookingCode, setSuccessBookingCode] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -122,8 +130,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         setDietaryRestrictions(initialGuest.dietaryRestrictions || []);
         setSelectedTags((prev) => Array.from(new Set([...prev, ...initialGuest.tags])));
         if (initialGuest.internalNotes) {
-          setNotes(initialGuest.internalNotes);
+          setGuestbookNotes(initialGuest.internalNotes);
         }
+        setNotes('');
         setMatchedGuestProfile(initialGuest);
       } else {
         setGuestName('');
@@ -135,6 +144,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         setDietaryRestrictions([]);
         setSelectedTags([]);
         setNotes('');
+        setGuestbookNotes('');
       }
     }
   }, [isOpen, globalDate, globalTime, initialGuest, initialStartTime]);
@@ -216,8 +226,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const isSelectedTableInBusySection = useMemo(() => {
     if (!selectedTableOption) return false;
     const targetOpt = [...directMatches, ...oversizedMatches].find((o) => o.tableId === selectedTableOption);
-    if (!targetOpt || !targetOpt.sectionId) return false;
-    const arrivalsInThisSec = sectionArrivals[targetOpt.sectionId] || 0;
+    if (!targetOpt || !targetOpt.sectionId || targetOpt.sectionId === 'bar_waiting') return false;
+    const arrivalsInThisSec = sectionArrivals[targetOpt.sectionId as 'section_1' | 'section_2' | 'section_3'] || 0;
     const hasAlternativeFreeSection = Object.values(sectionArrivals).some((arr) => arr === 0);
     return arrivalsInThisSec > 0 && hasAlternativeFreeSection;
   }, [selectedTableOption, directMatches, oversizedMatches, sectionArrivals]);
@@ -303,6 +313,26 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
       if (res.success && res.bookingCode) {
         setSuccessBookingCode(res.bookingCode);
+        // Persist guestbook notes to diner's contact card for future visits
+        if (guestName.trim()) {
+          const existing = guestProfileId
+            ? guestCrmService.getProfileById(guestProfileId)
+            : guestCrmService.getProfileByNameOrPhone(guestName, guestPhone);
+          if (existing) {
+            guestCrmService.updateProfile(existing.id, {
+              internalNotes: guestbookNotes.trim() || existing.internalNotes,
+              tags: Array.from(new Set([...existing.tags, ...selectedTags])),
+            });
+          } else if (guestbookNotes.trim() || guestPhone.trim()) {
+            guestCrmService.createProfile({
+              name: guestName.trim(),
+              phone: guestPhone.trim() || undefined,
+              email: guestEmail.trim() || undefined,
+              internalNotes: guestbookNotes.trim() || undefined,
+              tags: selectedTags,
+            });
+          }
+        }
       } else {
         setErrorMessage(res.error || 'Errore durante la creazione della prenotazione.');
       }
@@ -334,6 +364,26 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
       if (res.success && res.bookingCode) {
         setSuccessBookingCode(res.bookingCode);
+        // Persist guestbook notes to diner's contact card for future visits
+        if (guestName.trim()) {
+          const existing = guestProfileId
+            ? guestCrmService.getProfileById(guestProfileId)
+            : guestCrmService.getProfileByNameOrPhone(guestName, guestPhone);
+          if (existing) {
+            guestCrmService.updateProfile(existing.id, {
+              internalNotes: guestbookNotes.trim() || existing.internalNotes,
+              tags: Array.from(new Set([...existing.tags, ...selectedTags])),
+            });
+          } else if (guestbookNotes.trim() || guestPhone.trim()) {
+            guestCrmService.createProfile({
+              name: guestName.trim(),
+              phone: guestPhone.trim() || undefined,
+              email: guestEmail.trim() || undefined,
+              internalNotes: guestbookNotes.trim() || undefined,
+              tags: selectedTags,
+            });
+          }
+        }
       } else {
         setErrorMessage(res.error || 'Errore durante la creazione della prenotazione.');
       }
@@ -348,19 +398,27 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       : `Tavolo ${selectedTableOption}`;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-3 md:p-6 overflow-hidden">
-      <div className="bg-[#121622] border border-[#273248] rounded-3xl max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150 overflow-hidden text-slate-100">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-3 md:p-6 overflow-hidden">
+      <div className={`rounded-3xl max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150 overflow-hidden border ${
+        isLight
+          ? 'bg-white border-slate-200 text-slate-900'
+          : 'bg-[#121622] border-[#273248] text-slate-100'
+      }`}>
         {/* 1. FIXED HEADER (Always visible) */}
-        <div className="flex items-center justify-between px-6 py-3.5 border-b border-[#222A3C] bg-[#161C2A] shrink-0">
+        <div className={`flex items-center justify-between px-6 py-3.5 border-b shrink-0 ${
+          isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-[#161C2A] border-[#222A3C] text-white'
+        }`}>
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#8B31E0]/20 text-[#C084FC] border border-[#8B31E0]/30 flex items-center justify-center font-bold shadow-xs">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold shadow-xs border ${
+              isLight ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-[#8B31E0]/20 text-[#C084FC] border-[#8B31E0]/30'
+            }`}>
               <Utensils className="w-4 h-4 stroke-[1.5]" />
             </div>
             <div>
-              <h3 className="text-base font-semibold text-white leading-tight">
+              <h3 className={`text-base font-semibold leading-tight ${isLight ? 'text-slate-950' : 'text-white'}`}>
                 Nuova Prenotazione
               </h3>
-              <p className="text-[11px] text-slate-400">
+              <p className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                 Verifica disponibilità oraria e accorpamento tavoli
               </p>
             </div>
@@ -368,7 +426,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/5 transition cursor-pointer"
+            className={`p-1.5 rounded-xl transition cursor-pointer ${
+              isLight ? 'text-slate-400 hover:text-slate-900 hover:bg-slate-200/50' : 'text-slate-400 hover:text-white hover:bg-white/5'
+            }`}
           >
             <X className="w-5 h-5 stroke-[1.5]" />
           </button>
@@ -379,27 +439,31 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           {/* Success Screen */}
           {successBookingCode ? (
             <div className="text-center py-6 space-y-4">
-              <div className="w-14 h-14 bg-[#059669]/20 text-[#34D399] border border-[#059669]/40 rounded-full flex items-center justify-center mx-auto shadow-sm">
+              <div className="w-14 h-14 bg-emerald-50 text-emerald-600 border border-emerald-300 rounded-full flex items-center justify-center mx-auto shadow-sm">
                 <CheckCircle2 className="w-8 h-8 stroke-[1.5]" />
               </div>
               <div className="space-y-0.5">
-                <h4 className="text-lg font-semibold text-white">
+                <h4 className={`text-lg font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>
                   Prenotazione Confermata!
                 </h4>
-                <p className="text-xs text-slate-400">
+                <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                   Il tavolo è stato riservato in sala.
                 </p>
               </div>
 
-              <div className="bg-[#171D2B] border border-[#273248] rounded-2xl p-4 max-w-sm mx-auto space-y-1.5 shadow-xs">
+              <div className={`rounded-2xl p-4 max-w-sm mx-auto space-y-1.5 shadow-xs border ${
+                isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#171D2B] border-[#273248]'
+              }`}>
                 <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
                   Codice Prenotazione
                 </div>
-                <div className="font-mono text-2xl font-bold text-[#C084FC] tracking-wider">
+                <div className={`font-mono text-2xl font-bold tracking-wider ${isLight ? 'text-sky-700' : 'text-[#C084FC]'}`}>
                   {successBookingCode}
                 </div>
-                <div className="text-xs text-slate-300 font-medium pt-1.5 border-t border-[#242C3E]">
-                  Ospite: <strong className="text-white">{guestName}</strong> ({partySize} px) · {date} ore {startTime} - {calculatedEndTime}
+                <div className={`text-xs font-medium pt-1.5 border-t ${
+                  isLight ? 'text-slate-700 border-slate-200' : 'text-slate-300 border-[#242C3E]'
+                }`}>
+                  Ospite: <strong className={isLight ? 'text-slate-900' : 'text-white'}>{guestName}</strong> ({partySize} px) · {date} ore {startTime} - {calculatedEndTime}
                 </div>
               </div>
 
@@ -411,14 +475,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     setGuestName('');
                     setNotes('');
                   }}
-                  className="px-4 py-2 bg-[#171D2B] hover:bg-[#20273A] border border-[#273248] text-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer"
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer border ${
+                    isLight
+                      ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+                      : 'bg-[#171D2B] hover:bg-[#20273A] border-[#273248] text-slate-200'
+                  }`}
                 >
                   Nuova Prenotazione
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-5 py-2 bg-[#8B31E0] hover:bg-[#7928CA] text-white font-semibold rounded-xl text-xs transition shadow-sm cursor-pointer"
+                  className="px-5 py-2 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold rounded-xl text-xs transition shadow-sm cursor-pointer"
                 >
                   Torna alla Sala
                 </button>
@@ -889,8 +957,26 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 {/* Tab: Single Tables */}
                 {(tableTab === 'single' || recommendedMerges.length === 0) && (
                   <div className="space-y-2">
+                    {/* Round-Robin Auto-Allocation Explanation Bar */}
+                    <div className="bg-[#10141F] border border-[#273248] rounded-xl px-3 py-2 text-[11px] space-y-1">
+                      <div className="flex items-center justify-between text-slate-300 font-semibold">
+                        <span className="flex items-center gap-1.5 text-white">
+                          <Sparkles className="w-3.5 h-3.5 text-[#C084FC]" />
+                          <span>Rotazione Sezioni: 1. Main A → 2. Main B → 3. Private Room</span>
+                        </span>
+                        <span className="text-[10px] text-[#34D399] font-mono font-bold">
+                          {partySize <= 2 ? 'Regola: Solo Tavoli da 2 Pax' : partySize <= 5 ? 'Regola: Tavoli da 4 Pax' : 'Gruppo'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 leading-relaxed">
+                        {partySize <= 2
+                          ? 'I tavoli da 2 pax (G, 10, 11 in Main A; 13, 15, 22, 23 in Main B; 30 in Private) vengono assegnati a rotazione senza occupare i tavoli da 4. Il Bar funge da tampone.'
+                          : 'I tavoli da 4 pax (12, 20, 21 in Main A; 14, 16 in Main B; 31, 32, 33, 34 in Private) vengono ruotati tra le sezioni per bilanciare il carico dei camerieri.'}
+                      </p>
+                    </div>
+
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-36 overflow-y-auto p-1 bg-[#171D2B] rounded-xl border border-[#273248]">
-                      {directMatches.map((opt) => {
+                      {directMatches.map((opt, idx) => {
                         const isSelected =
                           selectedOptionType === 'single_or_existing' && selectedTableOption === opt.tableId;
                         return (
@@ -911,7 +997,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                             }`}
                           >
                             <div className="flex items-center justify-between w-full">
-                              <span className="truncate font-semibold text-white">{opt.tableName}</span>
+                              <span className="truncate font-semibold text-white">
+                                {idx === 0 && <span className="text-[#C084FC] mr-1">★</span>}
+                                {opt.tableName}
+                              </span>
                               <span className="text-[9px] font-mono text-[#34D399] shrink-0 font-bold ml-1">
                                 {opt.capacity}p
                               </span>
@@ -920,7 +1009,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                               <span className="truncate">
                                 {opt.sectionName?.split('—')[1]?.trim() || opt.sectionName}
                               </span>
-                              {opt.isRecommendedForBalancing ? (
+                              {idx === 0 ? (
+                                <span className="text-[#C084FC] font-semibold shrink-0">1° Scelta Auto</span>
+                              ) : opt.isRecommendedForBalancing ? (
                                 <span className="text-emerald-400 font-semibold shrink-0">✨ Bilanciato</span>
                               ) : (
                                 <span className="text-amber-400 font-mono shrink-0">{opt.sectionArrivalsAtSlot} arr.</span>
@@ -933,6 +1024,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                       {oversizedMatches.map((opt) => {
                         const isSelected =
                           selectedOptionType === 'single_or_existing' && selectedTableOption === opt.tableId;
+                        const isBar = opt.sectionId === 'bar_waiting' || opt.zone === 'bar';
                         return (
                           <button
                             key={opt.tableId}
@@ -945,6 +1037,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                             className={`p-2 rounded-xl border text-left transition flex flex-col justify-between text-xs cursor-pointer ${
                               isSelected
                                 ? 'bg-[#8B31E0]/20 border-[#8B31E0] text-white font-semibold shadow-xs'
+                                : isBar
+                                ? 'bg-[#131722] border-amber-900/30 text-amber-200/80 hover:border-amber-700/50'
                                 : 'bg-[#10141F] border-[#242C3E] text-slate-400 hover:border-slate-500'
                             }`}
                           >
@@ -956,9 +1050,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                             </div>
                             <div className="flex items-center justify-between w-full text-[9px] text-slate-500 mt-1">
                               <span className="truncate">
-                                {opt.sectionName?.split('—')[1]?.trim() || opt.sectionName}
+                                {isBar ? "Bar Tampone" : (opt.sectionName?.split('—')[1]?.trim() || opt.sectionName)}
                               </span>
-                              <span>{opt.serverName?.split(' ')[0]}</span>
+                              <span>{isBar ? "Attesa / Drink" : opt.serverName?.split(' ')[0]}</span>
                             </div>
                           </button>
                         );
@@ -982,13 +1076,21 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 )}
               </div>
 
-              {/* Step 4: Tags & Note */}
-              <div className="space-y-1.5 pt-2 border-t border-[#222A3C]">
-                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
-                  4. Note & Esigenze (Opzionale)
-                </span>
+              {/* Step 4: Tags & Distinct Notes (Visit vs Guestbook) */}
+              <div className={`space-y-3 pt-3 border-t ${isLight ? 'border-slate-100' : 'border-[#222A3C]'}`}>
+                <div className="flex items-center justify-between">
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider block ${
+                    isLight ? 'text-slate-500' : 'text-slate-400'
+                  }`}>
+                    4. Preferenze, Tag &amp; Note
+                  </span>
+                  <span className={`text-[10px] ${isLight ? 'text-sky-700 font-medium' : 'text-sky-300'}`}>
+                    Guest Intelligence &amp; Profilo Storico
+                  </span>
+                </div>
 
-                <div className="flex flex-wrap gap-1">
+                {/* Common Tags (Quiet table, favorite wine, friend of owner, etc.) */}
+                <div className="flex flex-wrap gap-1.5">
                   {COMMON_TAGS.map((tag) => {
                     const active = selectedTags.includes(tag);
                     return (
@@ -996,10 +1098,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                         key={tag}
                         type="button"
                         onClick={() => toggleTag(tag)}
-                        className={`px-2 py-0.5 rounded-lg text-[10px] font-medium transition cursor-pointer ${
+                        className={`px-2.5 py-1 rounded-xl text-[10px] font-medium transition cursor-pointer border ${
                           active
-                            ? 'bg-[#8B31E0] text-white font-semibold shadow-xs'
-                            : 'bg-[#10141F] border border-[#242C3E] text-slate-300 hover:border-[#8B31E0]/40'
+                            ? isLight
+                              ? 'bg-sky-50 text-sky-800 border-sky-300 shadow-2xs font-semibold'
+                              : 'bg-sky-950/40 text-sky-300 border-sky-700/50 shadow-2xs font-semibold'
+                            : isLight
+                            ? 'bg-slate-50/80 hover:bg-slate-100/80 border-slate-200/80 text-slate-700'
+                            : 'bg-[#151926] hover:bg-[#1A2234] border-[#222A3C] text-slate-300'
                         }`}
                       >
                         {tag}
@@ -1008,41 +1114,88 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   })}
                 </div>
 
-                <input
-                  type="text"
-                  placeholder="Note (es. allergie, preferenza finestra)..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full bg-[#10141F] border border-[#273044] rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#8B31E0]"
-                />
+                {/* Distinct Note 1: Visit Notes (per-reservation basis) */}
+                <div className="space-y-1">
+                  <label className={`block text-[11px] font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                    Note di Questa Visita (Visit Notes):
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Es. Richiesta tavolo silenzioso per oggi, seggiolone per bambino..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className={`w-full rounded-xl px-3 py-2 text-xs border focus:outline-none focus:border-sky-500 transition ${
+                      isLight
+                        ? 'bg-slate-50/70 border-slate-200/80 text-slate-900 placeholder-slate-400 focus:bg-white'
+                        : 'bg-[#10141F] border-[#273044] text-white placeholder-slate-500'
+                    }`}
+                  />
+                  <span className={`text-[10px] block ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Salvate esclusivamente su questa specifica prenotazione.
+                  </span>
+                </div>
+
+                {/* Distinct Note 2: Guestbook Notes (saved on contact card for future visits) */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className={`block text-[11px] font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                      Note Rubrica Ospite (Guestbook Notes):
+                    </label>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
+                      isLight ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-amber-950/30 text-amber-300 border border-amber-800/30'
+                    }`}>
+                      Permanenti ✓
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Es. Vino preferito: Barolo Cru, intolleranza crostacei, amico del proprietario..."
+                    value={guestbookNotes}
+                    onChange={(e) => setGuestbookNotes(e.target.value)}
+                    className={`w-full rounded-xl px-3 py-2 text-xs border focus:outline-none focus:border-sky-500 transition ${
+                      isLight
+                        ? 'bg-slate-50/70 border-slate-200/80 text-slate-900 placeholder-slate-400 focus:bg-white'
+                        : 'bg-[#10141F] border-[#273044] text-white placeholder-slate-500'
+                    }`}
+                  />
+                  <span className={`text-[10px] block ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Salvate sulla scheda contatto dell'ospite nel Guestbook per tutte le visite future.
+                  </span>
+                </div>
               </div>
             </form>
           )}
         </div>
 
-        {/* 3. FIXED FOOTER (Always visible with Submit CTA) */}
+        {/* 3. FIXED FOOTER WITH MAKE RESERVATION CTA */}
         {!successBookingCode && (
-          <div className="px-6 py-3 border-t border-[#222A3C] bg-[#161C2A] flex items-center justify-between gap-3 shrink-0">
+          <div className={`px-6 py-3.5 border-t flex items-center justify-between gap-3 shrink-0 ${
+            isLight ? 'bg-slate-50/70 border-slate-200/70' : 'bg-[#161C2A] border-[#222A3C]'
+          }`}>
             <div className="text-xs">
-              <span className="text-slate-400 text-[10px] block leading-none">Assegnato:</span>
-              <strong className="text-[#34D399] font-semibold">{selectedDisplayLabel}</strong>
+              <span className={`text-[10px] block leading-none ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Tavolo Selezionato:</span>
+              <strong className={isLight ? 'text-sky-700 font-semibold' : 'text-sky-300 font-semibold'}>{selectedDisplayLabel}</strong>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 bg-[#171D2B] hover:bg-[#20273A] text-slate-300 border border-[#273248] font-medium rounded-xl text-xs transition cursor-pointer"
+                className={`px-4 py-2 font-medium rounded-xl text-xs transition cursor-pointer border ${
+                  isLight
+                    ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200/80 shadow-2xs'
+                    : 'bg-[#171D2B] hover:bg-[#20273A] text-slate-300 border-[#273248]'
+                }`}
               >
                 Annulla
               </button>
               <button
                 type="submit"
                 form="booking-form"
-                className="px-5 py-2 bg-[#8B31E0] hover:bg-[#7928CA] text-white font-semibold rounded-xl text-xs transition shadow-md active:scale-[0.98] flex items-center gap-1.5 cursor-pointer"
+                className="px-5 py-2 bg-sky-500 hover:bg-sky-600 text-white font-medium rounded-xl text-xs transition shadow-2xs active:scale-[0.98] flex items-center gap-1.5 cursor-pointer border border-sky-400/30"
               >
                 <CheckCircle2 className="w-4 h-4 stroke-[1.5]" />
-                <span>Conferma e Occupa</span>
+                <span>Make Reservation (Crea Prenotazione)</span>
               </button>
             </div>
           </div>

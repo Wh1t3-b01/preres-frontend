@@ -60,65 +60,65 @@ export const ServerMonitorModal: React.FC<ServerMonitorModalProps> = ({ isOpen, 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-y-auto">
-      <div className="bg-[#152a22] text-stone-100 border-2 border-emerald-500/30 rounded-3xl p-6 max-w-2xl w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200 my-auto">
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-y-auto">
+      <div className="bg-white text-slate-800 border border-slate-200/80 rounded-2xl p-5 md:p-6 max-w-2xl w-full shadow-xl space-y-4 animate-in fade-in zoom-in-95 duration-150 my-auto">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-emerald-500/20 pb-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold shadow-xs">
-              <Server className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-700 border border-sky-200/80 flex items-center justify-center font-medium shadow-2xs">
+              <Server className="w-5 h-5 stroke-[1.5]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-brand font-bold text-emerald-200">
+                <h3 className="text-base font-semibold text-slate-800">
                   Pannello di Controllo & Monitor Server Real-Time
                 </h3>
-                <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                   ONLINE
                 </span>
               </div>
-              <p className="text-xs text-stone-400">
+              <p className="text-xs text-slate-400">
                 Node.js + Express + Socket.io Engine · Porta 3000
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-stone-400 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition"
+            className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-slate-100/70 transition cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 stroke-[1.5]" />
           </button>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-emerald-500/20 pb-2 text-xs font-semibold">
+        <div className="flex items-center gap-1.5 border-b border-slate-100 pb-2 text-xs font-medium">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`px-3 py-1.5 rounded-xl transition ${
+            className={`px-3 py-1.5 rounded-xl border transition cursor-pointer ${
               activeTab === 'overview'
-                ? 'bg-emerald-500 text-stone-950 font-bold shadow-xs'
-                : 'text-stone-400 hover:text-stone-200'
+                ? 'bg-sky-50 text-sky-700 border-sky-200/80 font-semibold shadow-2xs'
+                : 'bg-white border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
             }`}
           >
             Stato & Metriche
           </button>
           <button
             onClick={() => setActiveTab('endpoints')}
-            className={`px-3 py-1.5 rounded-xl transition ${
+            className={`px-3 py-1.5 rounded-xl border transition cursor-pointer ${
               activeTab === 'endpoints'
-                ? 'bg-emerald-500 text-stone-950 font-bold shadow-xs'
-                : 'text-stone-400 hover:text-stone-200'
+                ? 'bg-sky-50 text-sky-700 border-sky-200/80 font-semibold shadow-2xs'
+                : 'bg-white border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
             }`}
           >
             Endpoint REST API
           </button>
           <button
             onClick={() => setActiveTab('logs')}
-            className={`px-3 py-1.5 rounded-xl transition ${
+            className={`px-3 py-1.5 rounded-xl border transition cursor-pointer ${
               activeTab === 'logs'
-                ? 'bg-emerald-500 text-stone-950 font-bold shadow-xs'
-                : 'text-stone-400 hover:text-stone-200'
+                ? 'bg-sky-50 text-sky-700 border-sky-200/80 font-semibold shadow-2xs'
+                : 'bg-white border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
             }`}
           >
             Canali WebSocket Live
@@ -126,7 +126,7 @@ export const ServerMonitorModal: React.FC<ServerMonitorModalProps> = ({ isOpen, 
 
           <button
             onClick={fetchHealth}
-            className="ml-auto flex items-center gap-1 px-2.5 py-1 bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-semibold transition"
+            className="ml-auto flex items-center gap-1 px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition cursor-pointer"
             title="Esegui ping al server"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -139,60 +139,60 @@ export const ServerMonitorModal: React.FC<ServerMonitorModalProps> = ({ isOpen, 
           <div className="space-y-4 animate-in fade-in duration-150">
             {/* 4 Metric Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="bg-black/30 border border-emerald-500/20 rounded-2xl p-3">
-                <span className="text-[10px] uppercase text-stone-400 font-bold block">Stato WebSocket</span>
-                <div className="text-base font-bold text-emerald-400 flex items-center gap-1.5 mt-1">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3">
+                <span className="text-[10px] uppercase text-slate-500 font-bold block">Stato WebSocket</span>
+                <div className="text-base font-bold text-emerald-600 flex items-center gap-1.5 mt-1">
                   <Wifi className="w-4 h-4" />
                   <span>Connesso</span>
                 </div>
-                <span className="text-[10px] text-stone-500">Persistente v4</span>
+                <span className="text-[10px] text-slate-400">Persistente v4</span>
               </div>
 
-              <div className="bg-black/30 border border-emerald-500/20 rounded-2xl p-3">
-                <span className="text-[10px] uppercase text-stone-400 font-bold block">Schermi Connessi</span>
-                <div className="text-base font-bold text-amber-300 flex items-center gap-1.5 mt-1 font-mono-num">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3">
+                <span className="text-[10px] uppercase text-slate-500 font-bold block">Schermi Connessi</span>
+                <div className="text-base font-bold text-sky-700 flex items-center gap-1.5 mt-1 font-mono-num">
                   <Radio className="w-4 h-4" />
                   <span>{connectedPeersCount} Peer</span>
                 </div>
-                <span className="text-[10px] text-stone-500">In ascolto sincronizzato</span>
+                <span className="text-[10px] text-slate-400">In ascolto sincronizzato</span>
               </div>
 
-              <div className="bg-black/30 border border-emerald-500/20 rounded-2xl p-3">
-                <span className="text-[10px] uppercase text-stone-400 font-bold block">Latenza Round-Trip</span>
-                <div className="text-base font-bold text-blue-300 flex items-center gap-1.5 mt-1 font-mono-num">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3">
+                <span className="text-[10px] uppercase text-slate-500 font-bold block">Latenza Round-Trip</span>
+                <div className="text-base font-bold text-blue-600 flex items-center gap-1.5 mt-1 font-mono-num">
                   <Activity className="w-4 h-4" />
                   <span>{pingLatency !== null ? `${pingLatency} ms` : '—'}</span>
                 </div>
-                <span className="text-[10px] text-stone-500">Zero lag di rete</span>
+                <span className="text-[10px] text-slate-400">Zero lag di rete</span>
               </div>
 
-              <div className="bg-black/30 border border-emerald-500/20 rounded-2xl p-3">
-                <span className="text-[10px] uppercase text-stone-400 font-bold block">Uptime Server</span>
-                <div className="text-base font-bold text-purple-300 flex items-center gap-1.5 mt-1 font-mono-num">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3">
+                <span className="text-[10px] uppercase text-slate-500 font-bold block">Uptime Server</span>
+                <div className="text-base font-bold text-slate-900 flex items-center gap-1.5 mt-1 font-mono-num">
                   <ClockIcon />
                   <span>{healthData?.uptimeSeconds ? `${healthData.uptimeSeconds}s` : 'Attivo'}</span>
                 </div>
-                <span className="text-[10px] text-stone-500">Processo Node.js</span>
+                <span className="text-[10px] text-slate-400">Processo Node.js</span>
               </div>
             </div>
 
             {/* Server Architecture Details Box */}
-            <div className="bg-black/40 border border-emerald-500/20 rounded-2xl p-4 space-y-2 text-xs">
-              <div className="flex items-center justify-between text-stone-400 border-b border-white/5 pb-1.5">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-xs">
+              <div className="flex items-center justify-between text-slate-500 border-b border-slate-200 pb-1.5">
                 <span>Stack Backend:</span>
-                <strong className="text-emerald-300">Node.js Express + Socket.io Server</strong>
+                <strong className="text-slate-900">Node.js Express + Socket.io Server</strong>
               </div>
-              <div className="flex items-center justify-between text-stone-400 border-b border-white/5 pb-1.5">
+              <div className="flex items-center justify-between text-slate-500 border-b border-slate-200 pb-1.5">
                 <span>Porta di Ascolto HTTP/WS:</span>
-                <strong className="text-stone-200 font-mono">Port 3000 (0.0.0.0)</strong>
+                <strong className="text-slate-900 font-mono">Port 3000 (0.0.0.0)</strong>
               </div>
-              <div className="flex items-center justify-between text-stone-400 border-b border-white/5 pb-1.5">
+              <div className="flex items-center justify-between text-slate-500 border-b border-slate-200 pb-1.5">
                 <span>Replica Supabase Database:</span>
-                <strong className="text-amber-300">supabase_realtime (PostgreSQL CDC)</strong>
+                <strong className="text-sky-700">supabase_realtime (PostgreSQL CDC)</strong>
               </div>
-              <div className="flex items-center justify-between text-stone-400">
+              <div className="flex items-center justify-between text-slate-500">
                 <span>Canale Locale Cross-Tab:</span>
-                <strong className="text-stone-200 font-mono">sotto_sotto_realtime_sync</strong>
+                <strong className="text-slate-900 font-mono">sotto_sotto_realtime_sync</strong>
               </div>
             </div>
           </div>
@@ -201,49 +201,49 @@ export const ServerMonitorModal: React.FC<ServerMonitorModalProps> = ({ isOpen, 
         {/* Tab 2: REST Endpoints */}
         {activeTab === 'endpoints' && (
           <div className="space-y-2 text-xs animate-in fade-in duration-150">
-            <p className="text-[11px] text-stone-400 mb-2">
+            <p className="text-[11px] text-slate-500 mb-2">
               Puoi interrogare o verificare questi endpoint HTTP esposti dal server Express:
             </p>
 
             <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
-              <div className="bg-black/40 border border-emerald-500/20 rounded-xl p-2.5 flex items-center justify-between">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="bg-blue-500/20 text-blue-300 font-bold text-[10px] px-2 py-0.5 rounded font-mono">GET</span>
-                  <span className="font-mono text-emerald-300">/api/health</span>
+                  <span className="bg-sky-100 text-sky-800 font-bold text-[10px] px-2 py-0.5 rounded font-mono">GET</span>
+                  <span className="font-mono text-slate-900">/api/health</span>
                 </div>
-                <span className="text-[11px] text-stone-400">Controllo integrità e stato server</span>
+                <span className="text-[11px] text-slate-500">Controllo integrità e stato server</span>
               </div>
 
-              <div className="bg-black/40 border border-emerald-500/20 rounded-xl p-2.5 flex items-center justify-between">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="bg-blue-500/20 text-blue-300 font-bold text-[10px] px-2 py-0.5 rounded font-mono">GET</span>
-                  <span className="font-mono text-emerald-300">/api/state</span>
+                  <span className="bg-sky-100 text-sky-800 font-bold text-[10px] px-2 py-0.5 rounded font-mono">GET</span>
+                  <span className="font-mono text-slate-900">/api/state</span>
                 </div>
-                <span className="text-[11px] text-stone-400">Snapshot completo dati per reconnessione</span>
+                <span className="text-[11px] text-slate-500">Snapshot completo dati per riconnessione</span>
               </div>
 
-              <div className="bg-black/40 border border-emerald-500/20 rounded-xl p-2.5 flex items-center justify-between">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="bg-emerald-500/20 text-emerald-300 font-bold text-[10px] px-2 py-0.5 rounded font-mono">POST</span>
-                  <span className="font-mono text-emerald-300">/api/reservations</span>
+                  <span className="bg-emerald-100 text-emerald-800 font-bold text-[10px] px-2 py-0.5 rounded font-mono">POST</span>
+                  <span className="font-mono text-slate-900">/api/reservations</span>
                 </div>
-                <span className="text-[11px] text-stone-400">Crea prenotazione + broadcast automatico</span>
+                <span className="text-[11px] text-slate-500">Crea prenotazione + broadcast automatico</span>
               </div>
 
-              <div className="bg-black/40 border border-emerald-500/20 rounded-xl p-2.5 flex items-center justify-between">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="bg-amber-500/20 text-amber-300 font-bold text-[10px] px-2 py-0.5 rounded font-mono">PUT</span>
-                  <span className="font-mono text-emerald-300">/api/tables/:id/position</span>
+                  <span className="bg-amber-100 text-amber-800 font-bold text-[10px] px-2 py-0.5 rounded font-mono">PUT</span>
+                  <span className="font-mono text-slate-900">/api/tables/:id/position</span>
                 </div>
-                <span className="text-[11px] text-stone-400">Aggiorna coordinate tavolo con drag & drop</span>
+                <span className="text-[11px] text-slate-500">Aggiorna coordinate tavolo con drag & drop</span>
               </div>
 
-              <div className="bg-black/40 border border-emerald-500/20 rounded-xl p-2.5 flex items-center justify-between">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="bg-purple-500/20 text-purple-300 font-bold text-[10px] px-2 py-0.5 rounded font-mono">POST</span>
-                  <span className="font-mono text-emerald-300">/api/tables/merge</span>
+                  <span className="bg-purple-100 text-purple-800 font-bold text-[10px] px-2 py-0.5 rounded font-mono">POST</span>
+                  <span className="font-mono text-slate-900">/api/tables/merge</span>
                 </div>
-                <span className="text-[11px] text-stone-400">Unione tavoli in maxi-tavolo gruppo</span>
+                <span className="text-[11px] text-slate-500">Unione tavoli in maxi-tavolo gruppo</span>
               </div>
             </div>
           </div>
@@ -252,12 +252,12 @@ export const ServerMonitorModal: React.FC<ServerMonitorModalProps> = ({ isOpen, 
         {/* Tab 3: Socket.io Channels */}
         {activeTab === 'logs' && (
           <div className="space-y-2 text-xs animate-in fade-in duration-150">
-            <div className="bg-black/50 border border-emerald-500/20 rounded-2xl p-3 font-mono text-[11px] space-y-1.5 text-stone-300">
-              <div className="text-emerald-400 flex items-center gap-1.5 font-bold">
+            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 font-mono text-[11px] space-y-1.5 text-slate-300">
+              <div className="text-sky-400 flex items-center gap-1.5 font-bold">
                 <Terminal className="w-3.5 h-3.5" />
                 <span>Canali Broadcast Socket.io Registrati:</span>
               </div>
-              <div className="text-stone-400 pl-4 space-y-1">
+              <div className="text-slate-400 pl-4 space-y-1">
                 <div>⚡ <strong className="text-white">reservationUpdate</strong>: sincronizza inserimenti, cancellazioni e cambi stato coperti.</div>
                 <div>⚡ <strong className="text-white">roomLayoutUpdate</strong>: trasmette accorpamenti tavoli, variazioni capienza e modifiche sale.</div>
                 <div>⚡ <strong className="text-white">tableCoordinateUpdate</strong>: propagazione spaziale coordinate X/Y durante il drag-and-drop.</div>
@@ -268,15 +268,15 @@ export const ServerMonitorModal: React.FC<ServerMonitorModalProps> = ({ isOpen, 
         )}
 
         {/* Footer */}
-        <div className="pt-3 border-t border-emerald-500/20 flex items-center justify-between">
-          <div className="text-[11px] text-stone-400 flex items-center gap-1">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+        <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
+          <div className="text-[11px] text-slate-500 flex items-center gap-1">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
             <span>Server in esecuzione su porta 3000</span>
           </div>
 
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-bold rounded-xl text-xs transition shadow-md"
+            className="px-5 py-2 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold rounded-xl text-xs transition shadow-xs cursor-pointer"
           >
             Chiudi Monitor
           </button>

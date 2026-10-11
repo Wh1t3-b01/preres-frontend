@@ -25,41 +25,41 @@ export const PrintRunSheetModal: React.FC<PrintRunSheetModalProps> = ({ isOpen, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-      <div className="bg-white border-2 border-stone-300 rounded-3xl p-6 max-w-4xl w-full shadow-2xl space-y-4 my-auto print:p-0 print:border-0 print:shadow-none">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-4xl w-full shadow-2xl space-y-4 my-auto print:p-0 print:border-0 print:shadow-none">
         
         {/* Actions bar (hidden in print) */}
-        <div className="flex items-center justify-between border-b pb-3 print:hidden">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-3 print:hidden">
           <div className="flex items-center gap-2">
-            <ChefHat className="w-5 h-5 text-[#1E3A2F]" />
-            <h3 className="font-brand font-bold text-base text-[#1E3A2F]">
+            <ChefHat className="w-5 h-5 text-sky-600" />
+            <h3 className="font-brand font-bold text-base text-slate-900">
               Foglio di Servizio Cucina & Sala (Run Sheet) · {selectedDate}
             </h3>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#1E3A2F] hover:bg-[#152a22] text-amber-100 font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer"
             >
               <Printer className="w-4 h-4" />
               <span>Stampa / Salva PDF</span>
             </button>
-            <button onClick={onClose} className="p-1.5 text-stone-400 hover:text-stone-700 rounded-xl cursor-pointer">
+            <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl cursor-pointer">
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
         {/* PRINTABLE RUN SHEET CONTENT */}
-        <div className="space-y-4 text-stone-900 font-sans">
+        <div className="space-y-4 text-slate-900 font-sans">
           
           {/* Header */}
-          <div className="border-b-2 border-stone-900 pb-3 flex items-center justify-between">
+          <div className="border-b-2 border-slate-900 pb-3 flex items-center justify-between">
             <div>
-              <h1 className="font-brand font-bold text-2xl tracking-tight text-[#1E3A2F]">
+              <h1 className="font-brand font-bold text-2xl tracking-tight text-slate-950">
                 {settings.name.toUpperCase()}
               </h1>
-              <p className="text-xs text-stone-600 font-medium">
+              <p className="text-xs text-slate-600 font-medium">
                 PRERES Chef Run Sheet™ & Allergen Manifest · Data: <strong>{selectedDate}</strong>
               </p>
             </div>

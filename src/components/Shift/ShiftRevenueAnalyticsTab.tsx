@@ -23,7 +23,8 @@ type TimeRangeFilter = 'shift' | 'day' | 'week' | 'month' | 'custom';
 type ShiftFilter = 'all' | 'lunch' | 'dinner';
 
 export const ShiftRevenueAnalyticsTab: React.FC = () => {
-  const { tables, reservations, selectedDate, settings } = useRestaurant();
+  const { tables, reservations, selectedDate, settings, theme } = useRestaurant();
+  const isLight = theme === 'light';
 
   const [timeRange, setTimeRange] = useState<TimeRangeFilter>('day');
   const [activeShift, setActiveShift] = useState<ShiftFilter>('all');
@@ -169,22 +170,28 @@ export const ShiftRevenueAnalyticsTab: React.FC = () => {
   }, [tables, filteredReservations, selectedZone, selectedTableId, settings.avgSpendPerCover]);
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 transition-colors ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
       {/* FILTER BAR FOR REVENUE CALCULATIONS */}
-      <div className="bg-[#121622] border border-[#222A3C] rounded-2xl p-4 shadow-sm space-y-4">
+      <div className={`border rounded-2xl p-4 shadow-xs space-y-4 ${
+        isLight ? 'bg-white border-slate-200' : 'bg-[#121622] border-[#222A3C]'
+      }`}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
-            <h3 className="font-bold text-base text-white flex items-center gap-2">
-              <BarChart3 className="w-4.5 h-4.5 text-[#C084FC]" />
+            <h3 className={`font-bold text-base flex items-center gap-2 ${
+              isLight ? 'text-slate-900' : 'text-white'
+            }`}>
+              <BarChart3 className={`w-4.5 h-4.5 ${isLight ? 'text-sky-600' : 'text-[#C084FC]'}`} />
               <span>Calcolo Incassi Effettivi & Performance Operativa</span>
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               Analisi ricavi per turno, giornata, settimana, mese, intervallo temporale, sale e singolo tavolo.
             </p>
           </div>
 
           {/* Quick Period Buttons */}
-          <div className="flex items-center gap-1.5 bg-[#171D2B] p-1 rounded-xl border border-[#273248] text-xs">
+          <div className={`flex items-center gap-1.5 p-1 rounded-xl border text-xs ${
+            isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#171D2B] border-[#273248]'
+          }`}>
             {[
               { id: 'shift' as const, label: 'Turno Attivo' },
               { id: 'day' as const, label: 'Giornata' },
@@ -197,7 +204,11 @@ export const ShiftRevenueAnalyticsTab: React.FC = () => {
                 onClick={() => setTimeRange(p.id)}
                 className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
                   timeRange === p.id
-                    ? 'bg-[#8B31E0] text-white shadow-xs'
+                    ? isLight
+                      ? 'bg-sky-600 text-white shadow-xs'
+                      : 'bg-[#8B31E0] text-white shadow-xs'
+                    : isLight
+                    ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -208,16 +219,24 @@ export const ShiftRevenueAnalyticsTab: React.FC = () => {
         </div>
 
         {/* SUB-FILTERS: SHIFTS, ZONES, TABS, CUSTOM DATE RANGE */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-[#222A3C]/70 text-xs">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t text-xs ${
+          isLight ? 'border-slate-100' : 'border-[#222A3C]/70'
+        }`}>
           {/* Shift Filter */}
           <div>
-            <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+            <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-1 ${
+              isLight ? 'text-slate-500' : 'text-slate-400'
+            }`}>
               Filtro Turno
             </label>
             <select
               value={activeShift}
               onChange={(e) => setActiveShift(e.target.value as ShiftFilter)}
-              className="w-full bg-[#10141F] border border-[#242C3E] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#8B31E0]"
+              className={`w-full border rounded-xl px-3 py-2 focus:outline-none ${
+                isLight
+                  ? 'bg-white border-slate-200 text-slate-800 focus:border-sky-500'
+                  : 'bg-[#10141F] border-[#242C3E] text-white focus:border-[#8B31E0]'
+              }`}
             >
               <option value="all">Tutti i Turni (Pranzo + Cena)</option>
               <option value="lunch">☀️ Solo Pranzo (12:00 – 15:00)</option>
@@ -227,13 +246,19 @@ export const ShiftRevenueAnalyticsTab: React.FC = () => {
 
           {/* Section Filter */}
           <div>
-            <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+            <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-1 ${
+              isLight ? 'text-slate-500' : 'text-slate-400'
+            }`}>
               Sezione / Sala
             </label>
             <select
               value={selectedZone}
               onChange={(e) => setSelectedZone(e.target.value as 'all' | TableZone)}
-              className="w-full bg-[#10141F] border border-[#242C3E] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#8B31E0]"
+              className={`w-full border rounded-xl px-3 py-2 focus:outline-none ${
+                isLight
+                  ? 'bg-white border-slate-200 text-slate-800 focus:border-sky-500'
+                  : 'bg-[#10141F] border-[#242C3E] text-white focus:border-[#8B31E0]'
+              }`}
             >
               <option value="all">Tutte le Sezioni</option>
               <option value="main_a">Main A (Ala Ovest & Booth G)</option>
@@ -245,13 +270,19 @@ export const ShiftRevenueAnalyticsTab: React.FC = () => {
 
           {/* Table Filter */}
           <div>
-            <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+            <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-1 ${
+              isLight ? 'text-slate-500' : 'text-slate-400'
+            }`}>
               Singolo Tavolo
             </label>
             <select
               value={selectedTableId}
               onChange={(e) => setSelectedTableId(e.target.value)}
-              className="w-full bg-[#10141F] border border-[#242C3E] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#8B31E0]"
+              className={`w-full border rounded-xl px-3 py-2 focus:outline-none ${
+                isLight
+                  ? 'bg-white border-slate-200 text-slate-800 focus:border-sky-500'
+                  : 'bg-[#10141F] border-[#242C3E] text-white focus:border-[#8B31E0]'
+              }`}
             >
               <option value="all">Tutti i Tavoli ({tables.length})</option>
               {tables.map((t) => (
@@ -265,7 +296,9 @@ export const ShiftRevenueAnalyticsTab: React.FC = () => {
           {/* Custom Date Range if selected */}
           {timeRange === 'custom' ? (
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+              <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-1 ${
+                isLight ? 'text-slate-500' : 'text-slate-400'
+              }`}>
                 Intervallo Date
               </label>
               <div className="flex items-center gap-1.5">
@@ -273,23 +306,37 @@ export const ShiftRevenueAnalyticsTab: React.FC = () => {
                   type="date"
                   value={customStartDate}
                   onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="w-1/2 bg-[#10141F] border border-[#242C3E] rounded-xl px-2 py-1.5 text-xs text-white"
+                  className={`w-1/2 border rounded-xl px-2 py-1.5 text-xs ${
+                    isLight
+                      ? 'bg-white border-slate-200 text-slate-800'
+                      : 'bg-[#10141F] border-[#242C3E] text-white'
+                  }`}
                 />
-                <span className="text-slate-500">al</span>
+                <span className={isLight ? 'text-slate-400' : 'text-slate-500'}>al</span>
                 <input
                   type="date"
                   value={customEndDate}
                   onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="w-1/2 bg-[#10141F] border border-[#242C3E] rounded-xl px-2 py-1.5 text-xs text-white"
+                  className={`w-1/2 border rounded-xl px-2 py-1.5 text-xs ${
+                    isLight
+                      ? 'bg-white border-slate-200 text-slate-800'
+                      : 'bg-[#10141F] border-[#242C3E] text-white'
+                  }`}
                 />
               </div>
             </div>
           ) : (
             <div>
-              <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+              <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-1 ${
+                isLight ? 'text-slate-500' : 'text-slate-400'
+              }`}>
                 Data di Riferimento
               </label>
-              <div className="p-2 bg-[#10141F] border border-[#242C3E] rounded-xl text-slate-300 font-mono text-xs">
+              <div className={`p-2 border rounded-xl font-mono text-xs ${
+                isLight
+                  ? 'bg-slate-50 border-slate-200 text-slate-700 font-semibold'
+                  : 'bg-[#10141F] border-[#242C3E] text-slate-300'
+              }`}>
                 {selectedDate}
               </div>
             </div>
@@ -298,30 +345,54 @@ export const ShiftRevenueAnalyticsTab: React.FC = () => {
 
         {/* MACRO KPIS RESULT */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-          <div className="bg-[#171D2B] border border-[#273248] p-3 rounded-2xl text-center">
-            <span className="text-[10px] uppercase font-bold text-slate-400 block">Incasso Totale Effettivo</span>
-            <span className="text-xl sm:text-2xl font-black font-mono text-[#34D399] mt-0.5 block">
+          <div className={`border p-3 rounded-2xl text-center shadow-xs ${
+            isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-[#171D2B] border-[#273248]'
+          }`}>
+            <span className={`text-[10px] uppercase font-bold block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+              Incasso Totale Effettivo
+            </span>
+            <span className={`text-xl sm:text-2xl font-black font-mono mt-0.5 block ${
+              isLight ? 'text-emerald-600' : 'text-[#34D399]'
+            }`}>
               € {totalRevenue.toLocaleString('it-IT')}
             </span>
           </div>
 
-          <div className="bg-[#171D2B] border border-[#273248] p-3 rounded-2xl text-center">
-            <span className="text-[10px] uppercase font-bold text-slate-400 block">Coperti Totali Serviti</span>
-            <span className="text-xl sm:text-2xl font-black font-mono text-white mt-0.5 block">
-              {totalCovers} <span className="text-xs font-normal text-slate-400">pax</span>
+          <div className={`border p-3 rounded-2xl text-center shadow-xs ${
+            isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-[#171D2B] border-[#273248]'
+          }`}>
+            <span className={`text-[10px] uppercase font-bold block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+              Coperti Totali Serviti
+            </span>
+            <span className={`text-xl sm:text-2xl font-black font-mono mt-0.5 block ${
+              isLight ? 'text-slate-900' : 'text-white'
+            }`}>
+              {totalCovers} <span className={`text-xs font-normal ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>pax</span>
             </span>
           </div>
 
-          <div className="bg-[#171D2B] border border-[#273248] p-3 rounded-2xl text-center">
-            <span className="text-[10px] uppercase font-bold text-slate-400 block">Scontrino Medio Pro-Capite</span>
-            <span className="text-xl sm:text-2xl font-black font-mono text-[#C084FC] mt-0.5 block">
+          <div className={`border p-3 rounded-2xl text-center shadow-xs ${
+            isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-[#171D2B] border-[#273248]'
+          }`}>
+            <span className={`text-[10px] uppercase font-bold block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+              Scontrino Medio Pro-Capite
+            </span>
+            <span className={`text-xl sm:text-2xl font-black font-mono mt-0.5 block ${
+              isLight ? 'text-sky-700' : 'text-[#C084FC]'
+            }`}>
               € {avgSpendPerCover}
             </span>
           </div>
 
-          <div className="bg-[#171D2B] border border-[#273248] p-3 rounded-2xl text-center">
-            <span className="text-[10px] uppercase font-bold text-slate-400 block">Prenotazioni & Turni</span>
-            <span className="text-xl sm:text-2xl font-black font-mono text-amber-400 mt-0.5 block">
+          <div className={`border p-3 rounded-2xl text-center shadow-xs ${
+            isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-[#171D2B] border-[#273248]'
+          }`}>
+            <span className={`text-[10px] uppercase font-bold block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+              Prenotazioni & Turni
+            </span>
+            <span className={`text-xl sm:text-2xl font-black font-mono mt-0.5 block ${
+              isLight ? 'text-amber-600' : 'text-amber-400'
+            }`}>
               {totalBookings}
             </span>
           </div>
@@ -329,9 +400,13 @@ export const ShiftRevenueAnalyticsTab: React.FC = () => {
       </div>
 
       {/* SECTION & ZONE REVENUE BREAKDOWN */}
-      <div className="bg-[#121622] border border-[#222A3C] rounded-2xl p-5 shadow-sm space-y-4">
-        <h4 className="font-bold text-sm text-white flex items-center gap-2">
-          <Layers className="w-4 h-4 text-[#C084FC]" />
+      <div className={`border rounded-2xl p-5 shadow-xs space-y-4 ${
+        isLight ? 'bg-white border-slate-200' : 'bg-[#121622] border-[#222A3C]'
+      }`}>
+        <h4 className={`font-bold text-sm flex items-center gap-2 ${
+          isLight ? 'text-slate-900' : 'text-white'
+        }`}>
+          <Layers className={`w-4 h-4 ${isLight ? 'text-sky-600' : 'text-[#C084FC]'}`} />
           <span>Incassi Suddivisi per Sezione (Bar, Main A, Main B, Private)</span>
         </h4>
 
@@ -341,34 +416,48 @@ export const ShiftRevenueAnalyticsTab: React.FC = () => {
             return (
               <div
                 key={z.key}
-                className="bg-[#171D2B] border border-[#273248] p-4 rounded-2xl space-y-2 hover:border-[#8B31E0]/50 transition-colors"
+                className={`border p-4 rounded-2xl space-y-2 transition-colors ${
+                  isLight
+                    ? 'bg-slate-50/70 border-slate-200 hover:border-sky-300'
+                    : 'bg-[#171D2B] border-[#273248] hover:border-[#8B31E0]/50'
+                }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white truncate">{z.zoneName}</span>
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-black/40 text-slate-300 font-bold">
+                  <span className={`text-xs font-bold truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>{z.zoneName}</span>
+                  <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-bold ${
+                    isLight ? 'bg-slate-200/80 text-slate-700' : 'bg-black/40 text-slate-300'
+                  }`}>
                     {z.tableCount} tavoli
                   </span>
                 </div>
 
-                <div className="text-xl font-black font-mono text-[#34D399]">
+                <div className={`text-xl font-black font-mono ${
+                  isLight ? 'text-emerald-600' : 'text-[#34D399]'
+                }`}>
                   € {z.totalRevenue.toLocaleString('it-IT')}
                 </div>
 
-                <div className="space-y-1 pt-1 border-t border-[#222A3C] text-[11px] font-mono text-slate-400">
+                <div className={`space-y-1 pt-1 border-t text-[11px] font-mono ${
+                  isLight ? 'border-slate-200 text-slate-500' : 'border-[#222A3C] text-slate-400'
+                }`}>
                   <div className="flex justify-between">
                     <span>Coperti:</span>
-                    <strong className="text-white">{z.covers} px</strong>
+                    <strong className={isLight ? 'text-slate-800' : 'text-white'}>{z.covers} px</strong>
                   </div>
                   <div className="flex justify-between">
                     <span>Incidenza sul totale:</span>
-                    <strong className="text-[#C084FC]">{percentOfTotal}%</strong>
+                    <strong className={isLight ? 'text-sky-700' : 'text-[#C084FC]'}>{percentOfTotal}%</strong>
                   </div>
                 </div>
 
                 {/* Mini Progress Bar */}
-                <div className="w-full bg-[#10141F] h-1.5 rounded-full overflow-hidden">
+                <div className={`w-full h-1.5 rounded-full overflow-hidden ${
+                  isLight ? 'bg-slate-200' : 'bg-[#10141F]'
+                }`}>
                   <div
-                    className="h-full bg-gradient-to-r from-[#8B31E0] to-[#34D399] rounded-full"
+                    className={`h-full rounded-full ${
+                      isLight ? 'bg-gradient-to-r from-sky-500 to-emerald-500' : 'bg-gradient-to-r from-[#8B31E0] to-[#34D399]'
+                    }`}
                     style={{ width: `${percentOfTotal}%` }}
                   />
                 </div>
@@ -381,60 +470,76 @@ export const ShiftRevenueAnalyticsTab: React.FC = () => {
       {/* TOP SELLERS & LOW SELLERS PERFORMANCE (FOOD & BEVERAGES) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* TOP SELLERS CARD */}
-        <div className="bg-[#121622] border border-[#222A3C] rounded-2xl p-5 shadow-sm space-y-4">
+        <div className={`border rounded-2xl p-5 shadow-xs space-y-4 ${
+          isLight ? 'bg-white border-slate-200' : 'bg-[#121622] border-[#222A3C]'
+        }`}>
           <div className="flex items-center justify-between">
-            <h4 className="font-bold text-sm text-white flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-[#34D399]" />
+            <h4 className={`font-bold text-sm flex items-center gap-2 ${
+              isLight ? 'text-slate-900' : 'text-white'
+            }`}>
+              <TrendingUp className={`w-4 h-4 ${isLight ? 'text-emerald-600' : 'text-[#34D399]'}`} />
               <span>Piatti & Bevande TOP SELLER</span>
             </h4>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#059669]/20 text-[#34D399] border border-[#059669]/40 font-mono">
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full font-mono ${
+              isLight
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                : 'bg-[#059669]/20 text-[#34D399] border border-[#059669]/40'
+            }`}>
               Massima Rotazione
             </span>
           </div>
 
           <div className="space-y-2.5">
-            <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Top 5 Piatti Cucina</div>
+            <div className={`text-[10px] uppercase font-bold tracking-wider ${isLight ? 'text-slate-400' : 'text-slate-400'}`}>Top 5 Piatti Cucina</div>
             {topFoodSellers.map((item, idx) => (
               <div
                 key={item.id}
-                className="bg-[#171D2B] border border-[#273248] p-3 rounded-xl flex items-center justify-between text-xs"
+                className={`border p-3 rounded-xl flex items-center justify-between text-xs ${
+                  isLight ? 'bg-slate-50/70 border-slate-200' : 'bg-[#171D2B] border-[#273248]'
+                }`}
               >
                 <div className="flex items-center gap-2.5 truncate">
-                  <span className="w-5 h-5 rounded-lg bg-[#059669]/20 text-[#34D399] font-bold text-xs flex items-center justify-center shrink-0 font-mono">
+                  <span className={`w-5 h-5 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 font-mono ${
+                    isLight ? 'bg-emerald-100 text-emerald-800' : 'bg-[#059669]/20 text-[#34D399]'
+                  }`}>
                     #{idx + 1}
                   </span>
                   <div className="truncate">
-                    <span className="font-bold text-white block truncate">{item.name}</span>
-                    <span className="text-[10px] text-slate-400 font-mono">{item.subCategory}</span>
+                    <span className={`font-bold block truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>{item.name}</span>
+                    <span className={`text-[10px] font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{item.subCategory}</span>
                   </div>
                 </div>
 
                 <div className="text-right shrink-0 font-mono">
-                  <span className="font-bold text-[#34D399] block">{item.orderCount} ordini</span>
-                  <span className="text-[10px] text-slate-400">€ {item.revenueGenerated}</span>
+                  <span className={`font-bold block ${isLight ? 'text-emerald-700' : 'text-[#34D399]'}`}>{item.orderCount} ordini</span>
+                  <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>€ {item.revenueGenerated}</span>
                 </div>
               </div>
             ))}
 
-            <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider pt-2">Top 3 Vini & Bar</div>
+            <div className={`text-[10px] uppercase font-bold tracking-wider pt-2 ${isLight ? 'text-slate-400' : 'text-slate-400'}`}>Top 3 Vini & Bar</div>
             {topDrinkSellers.map((item, idx) => (
               <div
                 key={item.id}
-                className="bg-[#171D2B] border border-[#273248] p-3 rounded-xl flex items-center justify-between text-xs"
+                className={`border p-3 rounded-xl flex items-center justify-between text-xs ${
+                  isLight ? 'bg-slate-50/70 border-slate-200' : 'bg-[#171D2B] border-[#273248]'
+                }`}
               >
                 <div className="flex items-center gap-2.5 truncate">
-                  <span className="w-5 h-5 rounded-lg bg-[#8B31E0]/20 text-[#C084FC] font-bold text-xs flex items-center justify-center shrink-0 font-mono">
+                  <span className={`w-5 h-5 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 font-mono ${
+                    isLight ? 'bg-sky-100 text-sky-800' : 'bg-[#8B31E0]/20 text-[#C084FC]'
+                  }`}>
                     #{idx + 1}
                   </span>
                   <div className="truncate">
-                    <span className="font-bold text-white block truncate">{item.name}</span>
-                    <span className="text-[10px] text-slate-400 font-mono">{item.subCategory}</span>
+                    <span className={`font-bold block truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>{item.name}</span>
+                    <span className={`text-[10px] font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{item.subCategory}</span>
                   </div>
                 </div>
 
                 <div className="text-right shrink-0 font-mono">
-                  <span className="font-bold text-[#C084FC] block">{item.orderCount} ordini</span>
-                  <span className="text-[10px] text-slate-400">€ {item.revenueGenerated}</span>
+                  <span className={`font-bold block ${isLight ? 'text-sky-700' : 'text-[#C084FC]'}`}>{item.orderCount} ordini</span>
+                  <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>€ {item.revenueGenerated}</span>
                 </div>
               </div>
             ))}
@@ -442,60 +547,76 @@ export const ShiftRevenueAnalyticsTab: React.FC = () => {
         </div>
 
         {/* LOW SELLERS CARD */}
-        <div className="bg-[#121622] border border-[#222A3C] rounded-2xl p-5 shadow-sm space-y-4">
+        <div className={`border rounded-2xl p-5 shadow-xs space-y-4 ${
+          isLight ? 'bg-white border-slate-200' : 'bg-[#121622] border-[#222A3C]'
+        }`}>
           <div className="flex items-center justify-between">
-            <h4 className="font-bold text-sm text-white flex items-center gap-2">
-              <TrendingDown className="w-4 h-4 text-amber-400" />
+            <h4 className={`font-bold text-sm flex items-center gap-2 ${
+              isLight ? 'text-slate-900' : 'text-white'
+            }`}>
+              <TrendingDown className={`w-4 h-4 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
               <span>Piatti & Bevande LOW SELLER (Attenzione Scarti)</span>
             </h4>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 font-mono">
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full font-mono ${
+              isLight
+                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+            }`}>
               Bassa Rotazione
             </span>
           </div>
 
           <div className="space-y-2.5">
-            <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Low 5 Piatti Cucina</div>
+            <div className={`text-[10px] uppercase font-bold tracking-wider ${isLight ? 'text-slate-400' : 'text-slate-400'}`}>Low 5 Piatti Cucina</div>
             {lowFoodSellers.map((item, idx) => (
               <div
                 key={item.id}
-                className="bg-[#171D2B] border border-[#273248] p-3 rounded-xl flex items-center justify-between text-xs"
+                className={`border p-3 rounded-xl flex items-center justify-between text-xs ${
+                  isLight ? 'bg-slate-50/70 border-slate-200' : 'bg-[#171D2B] border-[#273248]'
+                }`}
               >
                 <div className="flex items-center gap-2.5 truncate">
-                  <span className="w-5 h-5 rounded-lg bg-amber-500/20 text-amber-400 font-bold text-xs flex items-center justify-center shrink-0 font-mono">
+                  <span className={`w-5 h-5 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 font-mono ${
+                    isLight ? 'bg-amber-100 text-amber-800' : 'bg-amber-500/20 text-amber-400'
+                  }`}>
                     #{idx + 1}
                   </span>
                   <div className="truncate">
-                    <span className="font-semibold text-slate-200 block truncate">{item.name}</span>
-                    <span className="text-[10px] text-slate-400 font-mono">{item.subCategory}</span>
+                    <span className={`font-semibold block truncate ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>{item.name}</span>
+                    <span className={`text-[10px] font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{item.subCategory}</span>
                   </div>
                 </div>
 
                 <div className="text-right shrink-0 font-mono">
-                  <span className="font-bold text-amber-400 block">{item.orderCount} ordini</span>
-                  <span className="text-[10px] text-slate-500">€ {item.revenueGenerated}</span>
+                  <span className={`font-bold block ${isLight ? 'text-amber-700' : 'text-amber-400'}`}>{item.orderCount} ordini</span>
+                  <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>€ {item.revenueGenerated}</span>
                 </div>
               </div>
             ))}
 
-            <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider pt-2">Low 3 Vini & Bar</div>
+            <div className={`text-[10px] uppercase font-bold tracking-wider pt-2 ${isLight ? 'text-slate-400' : 'text-slate-400'}`}>Low 3 Vini & Bar</div>
             {lowDrinkSellers.map((item, idx) => (
               <div
                 key={item.id}
-                className="bg-[#171D2B] border border-[#273248] p-3 rounded-xl flex items-center justify-between text-xs"
+                className={`border p-3 rounded-xl flex items-center justify-between text-xs ${
+                  isLight ? 'bg-slate-50/70 border-slate-200' : 'bg-[#171D2B] border-[#273248]'
+                }`}
               >
                 <div className="flex items-center gap-2.5 truncate">
-                  <span className="w-5 h-5 rounded-lg bg-rose-950/40 text-rose-400 font-bold text-xs flex items-center justify-center shrink-0 font-mono">
+                  <span className={`w-5 h-5 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 font-mono ${
+                    isLight ? 'bg-rose-100 text-rose-800' : 'bg-rose-950/40 text-rose-400'
+                  }`}>
                     #{idx + 1}
                   </span>
                   <div className="truncate">
-                    <span className="font-semibold text-slate-200 block truncate">{item.name}</span>
-                    <span className="text-[10px] text-slate-400 font-mono">{item.subCategory}</span>
+                    <span className={`font-semibold block truncate ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>{item.name}</span>
+                    <span className={`text-[10px] font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{item.subCategory}</span>
                   </div>
                 </div>
 
                 <div className="text-right shrink-0 font-mono">
-                  <span className="font-bold text-rose-400 block">{item.orderCount} ordini</span>
-                  <span className="text-[10px] text-slate-500">€ {item.revenueGenerated}</span>
+                  <span className={`font-bold block ${isLight ? 'text-rose-600' : 'text-rose-400'}`}>{item.orderCount} ordini</span>
+                  <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>€ {item.revenueGenerated}</span>
                 </div>
               </div>
             ))}
@@ -504,13 +625,17 @@ export const ShiftRevenueAnalyticsTab: React.FC = () => {
       </div>
 
       {/* SINGLE TABLE PERFORMANCE BREAKDOWN */}
-      <div className="bg-[#121622] border border-[#222A3C] rounded-2xl p-5 shadow-sm space-y-4">
+      <div className={`border rounded-2xl p-5 shadow-xs space-y-4 ${
+        isLight ? 'bg-white border-slate-200' : 'bg-[#121622] border-[#222A3C]'
+      }`}>
         <div className="flex items-center justify-between">
-          <h4 className="font-bold text-sm text-white flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-[#34D399]" />
+          <h4 className={`font-bold text-sm flex items-center gap-2 ${
+            isLight ? 'text-slate-900' : 'text-white'
+          }`}>
+            <DollarSign className={`w-4 h-4 ${isLight ? 'text-emerald-600' : 'text-[#34D399]'}`} />
             <span>Classifica Redditività per Singolo Tavolo ({tableRevenueList.length} tavoli analizzati)</span>
           </h4>
-          <span className="text-xs text-slate-400 font-mono">Ordinati per incasso decrescente</span>
+          <span className={`text-xs font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Ordinati per incasso decrescente</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -519,27 +644,39 @@ export const ShiftRevenueAnalyticsTab: React.FC = () => {
               key={t.tableId}
               className={`p-3.5 rounded-2xl border transition-all ${
                 t.tableNumber === 'G'
-                  ? 'bg-gradient-to-br from-[#171D2B] to-[#251b36] border-[#8B31E0]/60 ring-1 ring-[#8B31E0]/30'
+                  ? isLight
+                    ? 'bg-amber-50/50 border-amber-300 ring-1 ring-amber-300/50'
+                    : 'bg-gradient-to-br from-[#171D2B] to-[#251b36] border-[#8B31E0]/60 ring-1 ring-[#8B31E0]/30'
+                  : isLight
+                  ? 'bg-slate-50/70 border-slate-200 hover:border-sky-300'
                   : 'bg-[#171D2B] border-[#273248] hover:border-[#8B31E0]/50'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-bold text-sm text-white flex items-center gap-1.5">
+                <span className={`font-bold text-sm flex items-center gap-1.5 ${
+                  isLight ? 'text-slate-900' : 'text-white'
+                }`}>
                   <span>{t.tableName}</span>
                   {t.tableNumber === 'G' && <span className="text-xs">👑</span>}
                 </span>
-                <span className="text-[10px] font-mono uppercase px-1.5 py-0.2 rounded bg-black/40 text-slate-300">
+                <span className={`text-[10px] font-mono uppercase px-1.5 py-0.2 rounded ${
+                  isLight ? 'bg-slate-200 text-slate-700' : 'bg-black/40 text-slate-300'
+                }`}>
                   {t.zone} · {t.capacity}p
                 </span>
               </div>
 
-              <div className="text-lg font-black font-mono text-[#34D399] mt-1.5">
+              <div className={`text-lg font-black font-mono mt-1.5 ${
+                isLight ? 'text-emerald-600' : 'text-[#34D399]'
+              }`}>
                 € {t.revenue.toLocaleString('it-IT')}
               </div>
 
-              <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-2 border-t border-[#222A3C]/70 mt-2">
+              <div className={`flex items-center justify-between text-[11px] font-mono pt-2 border-t mt-2 ${
+                isLight ? 'border-slate-200 text-slate-500' : 'border-[#222A3C]/70 text-slate-400'
+              }`}>
                 <span>{t.bookingsCount} turni · {t.covers} coperti</span>
-                <span className="text-[#C084FC]">€{t.avgPerCover}/pax</span>
+                <span className={isLight ? 'text-sky-700 font-bold' : 'text-[#C084FC]'}>€{t.avgPerCover}/pax</span>
               </div>
             </div>
           ))}

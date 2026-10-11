@@ -9,7 +9,9 @@ import {
   WaitlistItem,
   ToastMessage,
   OperationsKPIs,
+  TableZone,
 } from '../types';
+import { FloorPlanLayout } from '../types/boh';
 import { DEFAULT_TABLES, DEFAULT_SETTINGS } from '../data/defaultTables';
 import { getInitialSeedData } from '../data/seedReservations';
 import { generateBookingCode, calcReservationDuration, minsToTime, timeToMins, validateAdvanceBookingSlotLimits } from '../utils/bookingEngine';
@@ -32,8 +34,13 @@ interface RestaurantContextType {
   kpis: OperationsKPIs;
   isRealtimeConnected: boolean;
   connectedPeersCount: number;
+  theme: 'light' | 'dark';
+  isHighContrast: boolean;
   
   // Setters
+  setTheme: (theme: 'light' | 'dark') => void;
+  toggleTheme: () => void;
+  toggleHighContrast: () => void;
   setStaffRole: (role: StaffRole) => void;
   setSelectedDate: (date: string) => void;
   setSelectedTime: (time: string) => void;
@@ -93,6 +100,7 @@ interface RestaurantContextType {
     partySize: number;
     tableId: string;
     assignedTableIds?: string[];
+    guestPhone?: string;
     notes?: string;
     tags?: string[];
   }) => { success: boolean; bookingCode?: string; error?: string };
@@ -116,12 +124,16 @@ interface RestaurantContextType {
   addToast: (toast: Omit<ToastMessage, 'id'>) => void;
   removeToast: (id: string) => void;
   
+  // BOH Floor Plan Sync
+  activeFloorPlanName: string;
+  applyBohLayout: (layout: FloorPlanLayout) => void;
+
   // Reset
   resetToDefaults: () => void;
 }
 
 const STORAGE_KEYS = {
-  TABLES: 'sotto_tables_v3',
+  TABLES: 'sotto_tables_v5',
   RESERVATIONS: 'sotto_reservations_v3',
   GROUPS: 'sotto_groups_v3',
   WAITLIST: 'sotto_waitlist_v3',
@@ -132,7 +144,13 @@ const STORAGE_KEYS = {
 const RestaurantContext = createContext<RestaurantContextType | undefined>(undefined);
 
 export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const getTodayStr = () => new Date().toISOString().split('T')[0];
+  const getTodayStr = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
   const getCurrentTimeStr = () => {
     const now = new Date();
     return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -149,6 +167,78 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [isRealtimeConnected, setIsRealtimeConnected] = useState<boolean>(true);
   const [connectedPeersCount, setConnectedPeersCount] = useState<number>(1);
+  const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('sotto_app_theme');
+    const initialTheme = saved === 'dark' ? 'dark' : 'light';
+    if (typeof document !== 'undefined') {
+      if (initialTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+    return initialTheme;
+  });
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  }, [theme]);
+
+  const setTheme = (newTheme: 'light' | 'dark') => {
+    setThemeState(newTheme);
+    localStorage.setItem('sotto_app_theme', newTheme);
+    if (typeof document !== 'undefined') {
+      if (newTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  };
+
+  const toggleTheme = () => {
+    const next = theme === 'light' ? 'dark' : 'light';
+    setTheme(next);
+  };
+
+  const [isHighContrast, setIsHighContrast] = useState<boolean>(() => {
+    const saved = localStorage.getItem('sotto_app_high_contrast');
+    const enabled = saved === 'true';
+    if (typeof document !== 'undefined') {
+      if (enabled) {
+        document.documentElement.classList.add('high-contrast');
+      } else {
+        document.documentElement.classList.remove('high-contrast');
+      }
+    }
+    return enabled;
+  });
+
+  const toggleHighContrast = () => {
+    setIsHighContrast((prev) => {
+      const next = !prev;
+      localStorage.setItem('sotto_app_high_contrast', String(next));
+      if (typeof document !== 'undefined') {
+        if (next) {
+          document.documentElement.classList.add('high-contrast');
+        } else {
+          document.documentElement.classList.remove('high-contrast');
+        }
+      }
+      return next;
+    });
+  };
+
+  // Active Floor Plan Name from BOH
+  const [activeFloorPlanName, setActiveFloorPlanName] = useState<string>(() => {
+    return localStorage.getItem('sotto_active_floorplan_name') || 'Sotto Sotto — Layout Principale (BAR, MAIN A, MAIN B, PRIVÉ)';
+  });
 
   // Tables State
   const [tables, setTables] = useState<RestaurantTable[]>(() => {
@@ -157,12 +247,23 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const hasNewZones = parsed.some((t: any) => t.zone === 'main_a' || t.zone === 'main_b');
-          if (hasNewZones) {
-            return parsed.map((t: any) =>
-              t.id === 'G' ? { ...t, capacity: 2, capacityOverride: 2 } : t
-            );
-          }
+          return DEFAULT_TABLES.map((dt) => {
+            const found = parsed.find((p: any) => p.id === dt.id);
+            if (found) {
+              return {
+                ...dt,
+                // Preserve dynamic runtime flags if present
+                isBlocked: found.isBlocked,
+                blockedReason: found.blockedReason,
+                courseStage: found.courseStage,
+                courseStartedAt: found.courseStartedAt,
+                needsAssistance: found.needsAssistance,
+                assistanceReason: found.assistanceReason,
+                capacityOverride: found.capacityOverride,
+              };
+            }
+            return dt;
+          });
         }
       } catch (e) {
         console.error('Failed to parse saved tables', e);
@@ -555,6 +656,64 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     });
   }, [addToast]);
 
+  // Synchronize / Apply BOH Floor Plan Layout to Visual Restaurant Area
+  const applyBohLayout = useCallback((layout: FloorPlanLayout) => {
+    setTables((currentTables) => {
+      const convertedTables: RestaurantTable[] = layout.tables.map((bt) => {
+        const existing = currentTables.find((t) => t.id === bt.id || t.tableNumber === bt.tableNumber);
+
+        let zone: TableZone = 'main_a';
+        if (bt.diningAreaId === 'area_bar' || bt.tableType === 'bar' || bt.id.startsWith('B') || bt.tableNumber.startsWith('B')) {
+          zone = 'bar';
+        } else if (bt.diningAreaId === 'area_private' || bt.tableType === 'private' || ['30', '31', '32', '33', '34'].includes(bt.id) || ['30', '31', '32', '33', '34'].includes(bt.tableNumber)) {
+          zone = 'private';
+        } else if (bt.diningAreaId === 'area_main_b' || ['13', '14', '15', '16', '22', '23'].includes(bt.id) || ['13', '14', '15', '16', '22', '23'].includes(bt.tableNumber)) {
+          zone = 'main_b';
+        } else if (bt.diningAreaId === 'area_main_a' || ['G', '10', '11', '12', '20', '21'].includes(bt.id) || ['G', '10', '11', '12', '20', '21'].includes(bt.tableNumber)) {
+          zone = 'main_a';
+        }
+
+        return {
+          id: bt.id,
+          tableNumber: bt.tableNumber,
+          name: bt.name,
+          zone,
+          capacity: bt.maxPartySize,
+          minPartySize: bt.minPartySize,
+          shape: bt.shape,
+          x: bt.x,
+          y: bt.y,
+          width: bt.width,
+          height: bt.height,
+          rotation: bt.rotation,
+          adjacentWith: bt.adjacentWith || [],
+          isBlocked: existing?.isBlocked,
+          blockedReason: existing?.blockedReason,
+          courseStage: existing?.courseStage,
+          courseStartedAt: existing?.courseStartedAt,
+          needsAssistance: existing?.needsAssistance,
+          assistanceReason: existing?.assistanceReason,
+          capacityOverride: existing?.capacityOverride,
+        };
+      });
+
+      localStorage.setItem(STORAGE_KEYS.TABLES, JSON.stringify(convertedTables));
+      realtimeSync.broadcast({ type: 'TABLES_UPDATED', payload: convertedTables });
+      return convertedTables;
+    });
+
+    setActiveFloorPlanName(layout.name);
+    localStorage.setItem('sotto_active_floorplan_name', layout.name);
+    localStorage.setItem('sotto_active_floorplan_id', layout.id);
+
+    addToast({
+      type: 'success',
+      title: 'Layout Assegnato alla Mappa Sala!',
+      message: `La disposizione "${layout.name}" (${layout.tables.length} tavoli nelle 4 sale) è ora attiva nella Mappa Sala visiva.`,
+      duration: 4000,
+    });
+  }, [addToast]);
+
   // Resy-style Table Block / Hold
   const toggleTableBlock = useCallback((tableId: string, reason?: string) => {
     setTables((prev) => {
@@ -853,6 +1012,7 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       partySize: number;
       tableId: string;
       assignedTableIds?: string[];
+      guestPhone?: string;
       notes?: string;
       tags?: string[];
     }) => {
@@ -1291,6 +1451,11 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
         kpis,
         isRealtimeConnected,
         connectedPeersCount,
+        theme,
+        setTheme,
+        toggleTheme,
+        isHighContrast,
+        toggleHighContrast,
         setStaffRole,
         setSelectedDate,
         setSelectedTime,
@@ -1327,6 +1492,8 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
         seatWaitlistGuest,
         addToast,
         removeToast,
+        activeFloorPlanName,
+        applyBohLayout,
         resetToDefaults,
       }}
     >

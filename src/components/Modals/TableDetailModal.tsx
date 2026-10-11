@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { guestCrmService } from '../../services/guestCrmService';
 import { computeTableInstantStatus } from '../../utils/bookingEngine';
+import { getTableSeatConfiguration } from '../../utils/tableSeatLayout';
 import {
   X,
   Users,
@@ -27,6 +28,8 @@ import {
   History,
   Lock,
   Unlock,
+  Compass,
+  Footprints,
 } from 'lucide-react';
 
 interface TableDetailModalProps {
@@ -61,10 +64,16 @@ export const TableDetailModal: React.FC<TableDetailModalProps> = ({
     transferTable,
     setTableCourseStage,
     rescheduleReservation,
+    quickSeatWalkIn,
+    addToast,
+    theme,
   } = useRestaurant();
+
+  const isLight = theme === 'light';
 
   const [isTransferring, setIsTransferring] = useState(false);
   const [targetTransferTableId, setTargetTransferTableId] = useState('');
+  const [walkInPax, setWalkInPax] = useState<number>(2);
 
   if (!tableId) return null;
 
@@ -104,37 +113,53 @@ export const TableDetailModal: React.FC<TableDetailModalProps> = ({
   const totalDailyCovers = tableDayReservations.reduce((sum, r) => sum + r.partySize, 0);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-[#121622] border border-[#273248] rounded-3xl p-5 sm:p-6 max-w-xl w-full shadow-2xl space-y-4 my-auto text-slate-100 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className={`rounded-3xl p-5 sm:p-6 max-w-xl w-full shadow-2xl space-y-4 my-auto animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col border ${
+        isLight
+          ? 'bg-white border-slate-200 text-slate-900'
+          : 'bg-[#121622] border-[#273248] text-slate-100'
+      }`}>
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-[#222A3C] shrink-0">
+        <div className={`flex items-center justify-between pb-3 border-b shrink-0 ${
+          isLight ? 'border-slate-200' : 'border-[#222A3C]'
+        }`}>
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-[#171D2B] border border-[#273248] text-[#C084FC] flex items-center justify-center font-brand font-bold text-lg shadow-xs">
+            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-brand font-bold text-lg shadow-xs border ${
+              isLight
+                ? 'bg-sky-50 border-sky-200 text-sky-700'
+                : 'bg-[#171D2B] border-[#273248] text-[#C084FC]'
+            }`}>
               {table.tableNumber}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white">
+                <h3 className={`text-base font-bold ${isLight ? 'text-slate-950' : 'text-white'}`}>
                   {activeGroup ? activeGroup.combinedName : table.name || `Tavolo ${table.tableNumber}`}
                 </h3>
                 {activeGroup && (
-                  <span className="text-[10px] font-semibold bg-[#8B31E0]/20 text-[#C084FC] border border-[#8B31E0]/30 px-2 py-0.5 rounded-full">
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                    isLight
+                      ? 'bg-sky-50 text-sky-700 border-sky-200'
+                      : 'bg-[#8B31E0]/20 text-[#C084FC] border-[#8B31E0]/30'
+                  }`}>
                     {activeGroup.combinedName}
                   </span>
                 )}
                 {table.isBlocked && (
-                  <span className="text-[10px] font-bold bg-rose-950/40 text-rose-400 border border-rose-800/50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full flex items-center gap-1">
                     <Lock className="w-2.5 h-2.5" />
                     <span>Hold Maître</span>
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-xs text-slate-400 flex-wrap mt-0.5">
+              <div className={`flex items-center gap-2 text-xs flex-wrap mt-0.5 ${
+                isLight ? 'text-slate-500' : 'text-slate-400'
+              }`}>
                 <span>Zona {table.zone.toUpperCase()}</span>
                 <span>·</span>
-                <span>Capienza: <strong className="text-white font-mono">{effectiveCapacity} pax</strong></span>
+                <span>Capienza: <strong className={`font-mono ${isLight ? 'text-slate-800' : 'text-white'}`}>{effectiveCapacity} pax</strong></span>
                 <span>·</span>
-                <span className="text-[#34D399] font-medium">
+                <span className="text-emerald-600 font-medium">
                   {selectedDate}: {totalTurns} {totalTurns === 1 ? 'prenotazione' : 'prenotazioni'} ({totalDailyCovers} pax)
                 </span>
               </div>
@@ -142,15 +167,19 @@ export const TableDetailModal: React.FC<TableDetailModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/5 transition cursor-pointer"
+            className={`p-1.5 rounded-xl transition cursor-pointer ${
+              isLight ? 'text-slate-400 hover:text-slate-900 hover:bg-slate-100' : 'text-slate-400 hover:text-white hover:bg-white/5'
+            }`}
           >
             <X className="w-5 h-5 stroke-[1.5]" />
           </button>
         </div>
 
         {/* Quick Action Bar: Add Booking for this Table & Hold */}
-        <div className="flex items-center justify-between gap-2 p-2.5 bg-[#171D2B] border border-[#273248] rounded-2xl shrink-0">
-          <div className="flex items-center gap-2">
+        <div className={`flex items-center justify-between gap-2 p-2.5 rounded-2xl shrink-0 border ${
+          isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#171D2B] border-[#273248]'
+        }`}>
+          <div className="flex items-center gap-2 flex-wrap">
             {onOpenBookingForTable && (
               <button
                 type="button"
@@ -158,7 +187,7 @@ export const TableDetailModal: React.FC<TableDetailModalProps> = ({
                   onClose();
                   onOpenBookingForTable(table.id);
                 }}
-                className="px-3.5 py-1.5 bg-[#8B31E0] hover:bg-[#7928CA] text-white font-semibold rounded-xl text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+                className="px-3.5 py-1.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold rounded-xl text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer active:scale-95"
               >
                 <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>+ Aggiungi Prenotazione per questo Tavolo</span>
@@ -171,26 +200,166 @@ export const TableDetailModal: React.FC<TableDetailModalProps> = ({
             onClick={() => toggleTableBlock(table.id, 'Bloccato / Riserva Maître')}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition border cursor-pointer flex items-center gap-1.5 ${
               table.isBlocked
-                ? 'bg-rose-950/30 text-rose-300 border-rose-800/50 hover:bg-rose-900/40'
+                ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                : isLight
+                ? 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                 : 'bg-[#10141F] text-slate-300 border-[#242C3E] hover:bg-[#20273A]'
             }`}
           >
             {table.isBlocked ? (
               <>
-                <Unlock className="w-3 h-3 text-rose-400" />
+                <Unlock className="w-3 h-3 text-rose-600" />
                 <span>Sblocca Tavolo</span>
               </>
             ) : (
               <>
-                <Lock className="w-3 h-3 text-slate-400" />
+                <Lock className={`w-3 h-3 ${isLight ? 'text-slate-500' : 'text-slate-400'}`} />
                 <span>Hold / Riserva</span>
               </>
             )}
           </button>
         </div>
 
+        {/* 1. SEATING A WALK-IN (Essential #1: Tap empty table -> Seat Walk-In & add party size) */}
+        {liveStatus.status === 'free' && (
+          <div className={`p-3 sm:p-3.5 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0 ${
+            isLight
+              ? 'bg-emerald-50/80 border-emerald-200/80 text-emerald-950 shadow-2xs'
+              : 'bg-emerald-950/30 border-emerald-800/40 text-emerald-200'
+          }`}>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                <Footprints className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-semibold text-xs leading-tight">Seating a Walk-In</h4>
+                  <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded border ${
+                    isLight ? 'bg-white text-emerald-700 border-emerald-200' : 'bg-black/30 text-emerald-300 border-emerald-700/50'
+                  }`}>
+                    Tavolo Libero
+                  </span>
+                </div>
+                <p className={`text-[10px] mt-0.5 ${isLight ? 'text-emerald-700' : 'text-emerald-300'}`}>
+                  Seleziona il numero di coperti e tocca <strong>Seat Walk-In</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+              <div className={`flex items-center gap-1 p-1 rounded-xl border ${
+                isLight ? 'bg-white border-emerald-200' : 'bg-[#0E121B] border-emerald-800/40'
+              }`}>
+                <span className={`text-[10px] font-medium px-1 ${isLight ? 'text-emerald-800' : 'text-emerald-300'}`}>Pax:</span>
+                {[1, 2, 3, 4, Math.max(6, effectiveCapacity)].map((pax) => (
+                  <button
+                    key={pax}
+                    type="button"
+                    onClick={() => setWalkInPax(pax)}
+                    className={`w-6 h-6 rounded-lg text-xs font-mono font-bold transition cursor-pointer ${
+                      walkInPax === pax
+                        ? 'bg-emerald-500 text-white shadow-2xs'
+                        : isLight
+                        ? 'text-slate-600 hover:bg-emerald-50'
+                        : 'text-slate-300 hover:bg-emerald-900/30'
+                    }`}
+                  >
+                    {pax}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const res = quickSeatWalkIn({
+                    tableId: table.id,
+                    partySize: walkInPax,
+                    guestName: `Walk-in (Tavolo ${table.tableNumber})`,
+                  });
+                  if (res.success) {
+                    addToast({
+                      type: 'success',
+                      title: 'Walk-In Accomodato',
+                      message: `Walk-in (${walkInPax} persone) accomodato al Tavolo ${table.tableNumber}. Ora appare nella lista prenotazioni!`,
+                    });
+                    onClose();
+                  }
+                }}
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                <span>Seat Walk-In</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Scrollable Content Body */}
         <div className="overflow-y-auto space-y-4 pr-1 flex-1">
+          {/* SEATING & WAITER PERSPECTIVE CARD */}
+          {(() => {
+            const seatConfig = getTableSeatConfiguration(table.id, effectiveCapacity);
+            return (
+              <div className={`rounded-2xl p-3.5 space-y-2.5 border ${
+                isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#151B27] border-[#252F43]'
+              }`}>
+                <div className="flex items-center justify-between text-xs">
+                  <span className={`font-semibold flex items-center gap-1.5 ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    <Compass className={`w-3.5 h-3.5 ${isLight ? 'text-sky-600' : 'text-[#C084FC]'}`} />
+                    <span>Disposizione Sedute & Cameriere</span>
+                  </span>
+                  <span className="text-[10px] text-emerald-700 font-mono font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    ↻ Senso Orario da Sinistra
+                  </span>
+                </div>
+
+                <div className={`text-[11px] p-2.5 rounded-xl border leading-relaxed ${
+                  isLight ? 'bg-white text-slate-700 border-slate-200' : 'text-slate-300 bg-[#0E121B] border-[#1E2536]'
+                }`}>
+                  <div className={`font-medium mb-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    📍 <span className={isLight ? 'text-sky-700 font-semibold' : 'text-[#C084FC]'}>Accesso:</span> {seatConfig.waiterApproach}
+                  </div>
+                  <div className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                    {seatConfig.clockwiseDescription}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-0.5">
+                  {seatConfig.seats.map((s) => (
+                    <div
+                      key={s.seatNumber}
+                      className={`rounded-xl p-2 text-left border ${
+                        isLight ? 'bg-white border-slate-200' : 'bg-[#10141F] border-[#242C3E]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className={`text-[10px] font-mono font-bold ${isLight ? 'text-sky-700' : 'text-[#C084FC]'}`}>
+                          Posto {s.seatNumber}
+                        </span>
+                        {s.isOnBench && (
+                          <span className={`text-[8px] px-1 py-0.2 rounded font-semibold border ${
+                            isLight
+                              ? 'bg-sky-50 text-sky-700 border-sky-200'
+                              : 'bg-sky-950 text-sky-300 border-sky-800/60'
+                          }`}>
+                            Panca
+                          </span>
+                        )}
+                      </div>
+                      <div className={`text-[11px] font-semibold mt-0.5 truncate ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
+                        {s.shortLabel}
+                      </div>
+                      <div className={`text-[9px] mt-0.5 truncate ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                        {s.locationDescription}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* SEATED COURSE PROGRESSION (If currently occupied in real-time) */}
           {currentRes && currentRes.status === 'seated' && (
             <div className="bg-[#171D2B] border border-[#273248] rounded-2xl p-3.5 space-y-2">

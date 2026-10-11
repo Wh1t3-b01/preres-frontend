@@ -29,8 +29,10 @@ export const SpatialZoneCanvas: React.FC<SpatialZoneCanvasProps> = ({
     isLayoutEditMode,
     updateTablePosition,
     removeCustomTable,
+    theme,
   } = useRestaurant();
 
+  const isLight = theme === 'light';
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingTableId, setDraggingTableId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -80,18 +82,30 @@ export const SpatialZoneCanvas: React.FC<SpatialZoneCanvasProps> = ({
   };
 
   return (
-    <section className="bg-[#10141F] border border-[#222A3C] rounded-3xl p-3.5 sm:p-5 shadow-sm relative w-full overflow-hidden flex flex-col justify-between text-slate-100">
+    <section className={`rounded-3xl p-3.5 sm:p-5 shadow-xs relative w-full overflow-hidden flex flex-col justify-between border transition-colors ${
+      isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-[#10141F] border-[#222A3C] text-slate-100'
+    }`}>
       {/* Zone Header */}
-      <div className="flex flex-wrap items-center justify-between pb-2.5 mb-2.5 border-b border-[#222A3C] gap-2">
+      <div className={`flex flex-wrap items-center justify-between pb-2.5 mb-2.5 border-b gap-2 ${
+        isLight ? 'border-slate-200' : 'border-[#222A3C]'
+      }`}>
         <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-[#171C2A] text-[#C084FC] rounded-xl shadow-xs border border-[#273044] shrink-0">
+          <div className={`p-1.5 rounded-xl shadow-2xs border shrink-0 ${
+            isLight
+              ? 'bg-sky-50 text-sky-700 border-sky-200'
+              : 'bg-[#171C2A] text-[#C084FC] border-[#273044]'
+          }`}>
             {icon}
           </div>
           <div>
-            <h3 className="text-xs sm:text-sm font-semibold text-white tracking-wide leading-tight">
+            <h3 className={`text-xs sm:text-sm font-bold tracking-wide leading-tight ${
+              isLight ? 'text-slate-950 font-bold' : 'text-white font-semibold'
+            }`}>
               {zoneTitle}
             </h3>
-            <p className="text-[10px] text-slate-400 truncate max-w-[280px] sm:max-w-none">
+            <p className={`text-[10px] truncate max-w-[280px] sm:max-w-none ${
+              isLight ? 'text-slate-500' : 'text-slate-400'
+            }`}>
               {zoneSubtitle}
             </p>
           </div>
@@ -101,14 +115,20 @@ export const SpatialZoneCanvas: React.FC<SpatialZoneCanvasProps> = ({
           {onAddNewTable && (
             <button
               onClick={onAddNewTable}
-              className="px-2 py-1 bg-[#171C2A] hover:bg-[#20273A] border border-[#273044] text-[#C084FC] rounded-xl text-xs transition cursor-pointer flex items-center gap-1 shadow-2xs"
+              className={`px-2 py-1 rounded-xl text-xs transition cursor-pointer flex items-center gap-1 shadow-2xs border ${
+                isLight
+                  ? 'bg-sky-50 hover:bg-sky-100 text-sky-700 border-sky-200 font-semibold'
+                  : 'bg-[#171C2A] hover:bg-[#20273A] border-[#273044] text-[#C084FC]'
+              }`}
             >
               <Plus className="w-3 h-3 stroke-[2]" />
               <span className="hidden sm:inline text-[10px] font-semibold">+ Tavolo</span>
             </button>
           )}
 
-          <div className="text-[10px] font-mono text-slate-400 bg-[#171C2A] px-2 py-0.5 rounded-lg border border-[#273044]">
+          <div className={`text-[10px] font-mono px-2 py-0.5 rounded-lg border ${
+            isLight ? 'text-slate-600 bg-slate-100 border-slate-200' : 'text-slate-400 bg-[#171C2A] border-[#273044]'
+          }`}>
             {tables.length} tavoli
           </div>
         </div>
@@ -117,22 +137,31 @@ export const SpatialZoneCanvas: React.FC<SpatialZoneCanvasProps> = ({
       {/* Spatial 2D Interactive Canvas */}
       <div
         ref={containerRef}
-        className={`relative w-full h-[360px] sm:h-[390px] rounded-2xl transition-all duration-200 overflow-hidden ${
+        className={`relative w-full h-[460px] sm:h-[500px] rounded-2xl transition-all duration-200 overflow-hidden ${
           isLayoutEditMode
-            ? 'bg-[#0B0E17] ring-2 ring-[#A855F7]/40 cursor-crosshair'
+            ? isLight
+              ? 'bg-slate-50 ring-2 ring-sky-400 cursor-crosshair'
+              : 'bg-[#0B0E17] ring-2 ring-[#A855F7]/40 cursor-crosshair'
+            : isLight
+            ? 'bg-[#F8FAFC] border border-slate-200/90 shadow-inner'
             : 'bg-[#0B0E17] border border-[#1A2030]'
         }`}
         style={{
-          backgroundImage:
-            'radial-gradient(circle, #21293D 1px, transparent 1px)',
-          backgroundSize: '22px 22px',
+          backgroundImage: isLight
+            ? 'radial-gradient(circle, #CBD5E1 1.25px, transparent 1.25px)'
+            : 'radial-gradient(circle, #21293D 1px, transparent 1px)',
+          backgroundSize: '24px 24px',
         }}
       >
         {/* Wall & Boundary Visual Guides */}
-        <div className="absolute top-2 left-3 text-[8px] uppercase tracking-widest text-slate-600 font-semibold pointer-events-none select-none">
+        <div className={`absolute top-2 left-3 text-[8px] uppercase tracking-widest font-semibold pointer-events-none select-none ${
+          isLight ? 'text-slate-400' : 'text-slate-600'
+        }`}>
           Nord · Parete Esterna
         </div>
-        <div className="absolute bottom-2 right-3 text-[8px] uppercase tracking-widest text-slate-600 font-semibold pointer-events-none select-none">
+        <div className={`absolute bottom-2 right-3 text-[8px] uppercase tracking-widest font-semibold pointer-events-none select-none ${
+          isLight ? 'text-slate-400' : 'text-slate-600'
+        }`}>
           Sud · Passaggio Sala
         </div>
 

@@ -85,6 +85,38 @@ export const staffService = {
     localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(members));
   },
 
+  addStaffMember(data: {
+    firstName: string;
+    lastName: string;
+    fullName?: string;
+    email: string;
+    role?: StaffRole;
+    pinCode?: string;
+  }): StaffMember {
+    const members = this.getStaffMembers();
+    const cleanEmail = data.email.trim().toLowerCase();
+    const newStaff: StaffMember = {
+      id: `staff_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      firstName: data.firstName.trim(),
+      lastName: data.lastName.trim(),
+      fullName: data.fullName || `${data.firstName.trim()} ${data.lastName.trim()}`,
+      email: cleanEmail,
+      role: data.role || 'waiter',
+      isActive: true,
+      pinCode: data.pinCode || '1234',
+      createdAt: new Date().toISOString(),
+      stats: {
+        tablesServedCount: 0,
+        totalRevenueGenerated: 0,
+        voidCount: 0,
+      },
+    };
+    members.unshift(newStaff);
+    this.saveStaffMembers(members);
+    realtimeSync.broadcast({ type: 'STAFF_MEMBER_CREATED', payload: newStaff });
+    return newStaff;
+  },
+
   async createWaiterAccount(data: {
     firstName: string;
     lastName: string;

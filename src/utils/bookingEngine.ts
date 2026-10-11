@@ -137,29 +137,37 @@ export interface DiningSectionInfo {
   serverName: string;
   zone: string;
   description: string;
+  twoSeaters: string[];
+  fourSeaters: string[];
 }
 
 export const DINING_SECTIONS: Record<DiningSectionId, DiningSectionInfo> = {
   section_1: {
     id: 'section_1',
-    name: 'Sezione 1 — Ala Ovest',
+    name: 'Sezione 1 — Main A (Ala Ovest)',
     serverName: 'Simone Rinaldi',
     zone: 'main_a',
-    description: 'Tavolo G (Booth VIP), 10, 11, 12, 20, 21',
+    description: 'Tavoli 2-pax: G, 10, 11 | Tavoli 4-pax: 12, 20, 21',
+    twoSeaters: ['G', '10', '11'],
+    fourSeaters: ['12', '20', '21'],
   },
   section_2: {
     id: 'section_2',
-    name: 'Sezione 2 — Ala Est & Centro',
+    name: 'Sezione 2 — Main B (Ala Est & Centro)',
     serverName: 'Marco Gentili',
     zone: 'main_b',
-    description: 'Tavoli 13, 14, 15, 16, 21_b, 22, 23',
+    description: 'Tavoli 2-pax: 13, 15, 22, 23 | Tavoli 4-pax: 14, 16',
+    twoSeaters: ['13', '15', '22', '23'],
+    fourSeaters: ['14', '16'],
   },
   section_3: {
     id: 'section_3',
-    name: 'Sezione 3 — Privé, Terrazza & Bar',
-    serverName: 'Chiara Valli / Server 3',
+    name: 'Sezione 3 — Private Room (Privé)',
+    serverName: 'Chiara Valli',
     zone: 'private',
-    description: 'Tavoli Bar B1–B4, Privé P1–P5',
+    description: 'Tavolo 2-pax: 30 | Tavoli 4-pax: 31, 32, 33, 34',
+    twoSeaters: ['30'],
+    fourSeaters: ['31', '32', '33', '34'],
   },
 };
 
@@ -172,10 +180,10 @@ export function getTableDiningSection(tableId: string, zone?: string): DiningSec
     return DINING_SECTIONS.section_1;
   }
   // Section 2: Main B / East wing & Center
-  if (['13', '14', '15', '16', '21_b', '22', '23'].includes(tableId) || zone === 'main_b') {
+  if (['13', '14', '15', '16', '22', '23'].includes(tableId) || zone === 'main_b') {
     return DINING_SECTIONS.section_2;
   }
-  // Section 3: Private, Terrace, Bar
+  // Section 3: Private Room
   return DINING_SECTIONS.section_3;
 }
 
@@ -205,10 +213,65 @@ export function getSectionArrivalsForSlot(
 
   for (const r of slotReservations) {
     const sec = getTableDiningSection(r.tableId);
-    counts[sec.id] = (counts[sec.id] || 0) + 1;
+    if (counts[sec.id] !== undefined) {
+      counts[sec.id] = (counts[sec.id] || 0) + 1;
+    }
   }
 
   return counts;
+}
+
+/**
+ * Determines the round-robin section priority order for the next reservation.
+ * 1st -> Main A (section_1)
+ * 2nd -> Main B (section_2)
+ * 3rd -> Private Room (section_3)
+ * 4th -> Main A, and so on.
+ */
+export function getSectionRoundRobinOrder(
+  date: string,
+  startTime: string,
+  reservations: Reservation[],
+  excludeReservationId?: string
+): DiningSectionId[] {
+  // Check active arrivals for this specific 15-min slot
+  const slotArrivals = getSectionArrivalsForSlot(date, startTime, reservations, excludeReservationId);
+
+  // If there are zero arrivals in this slot across all sections, check total day/service reservations
+  const totalSlot = slotArrivals.section_1 + slotArrivals.section_2 + slotArrivals.section_3;
+
+  let counts: Record<DiningSectionId, number> = slotArrivals;
+
+  if (totalSlot === 0) {
+    // Check total active reservations for the day to keep global shift balance
+    const dayCounts: Record<DiningSectionId, number> = {
+      section_1: 0,
+      section_2: 0,
+      section_3: 0,
+    };
+    for (const r of reservations) {
+      if (r.reservationDate === date && r.status !== 'cancelled' && r.id !== excludeReservationId) {
+        const sec = getTableDiningSection(r.tableId);
+        if (dayCounts[sec.id] !== undefined) {
+          dayCounts[sec.id]++;
+        }
+      }
+    }
+    counts = dayCounts;
+  }
+
+  // Determine section rotation based on lowest count, with strict priority order: section_1 -> section_2 -> section_3
+  const sectionList: DiningSectionId[] = ['section_1', 'section_2', 'section_3'];
+
+  // Sort sections: least booked first. In case of tie, keep the canonical order (Main A -> Main B -> Private)
+  sectionList.sort((a, b) => {
+    const diff = (counts[a] || 0) - (counts[b] || 0);
+    if (diff !== 0) return diff;
+    const orderMap: Record<DiningSectionId, number> = { section_1: 1, section_2: 2, section_3: 3 };
+    return orderMap[a] - orderMap[b];
+  });
+
+  return sectionList;
 }
 
 /**
@@ -329,8 +392,6 @@ export function isTableFreeDuringSlot(
   reservations: Reservation[],
   excludeReservationId?: string
 ): boolean {
-  const equivalentIds = tableId === '21' || tableId === '21_b' ? ['21', '21_b'] : [tableId];
-
   const activeReservations = reservations.filter(
     (r) =>
       r.reservationDate === date &&
@@ -341,8 +402,8 @@ export function isTableFreeDuringSlot(
 
   for (const res of activeReservations) {
     const isTargeted =
-      equivalentIds.includes(res.tableId) ||
-      (res.assignedTableIds && res.assignedTableIds.some((id) => equivalentIds.includes(id)));
+      res.tableId === tableId ||
+      (res.assignedTableIds && res.assignedTableIds.includes(tableId));
 
     if (isTargeted) {
       if (isTimeOverlap(startTime, endTime, res.startTime, res.endTime)) {
@@ -355,7 +416,33 @@ export function isTableFreeDuringSlot(
 }
 
 /**
- * Finds all single tables and pre-existing groups available for a booking.
+ * Table priority maps for each section according to exact restaurant specification:
+ * - Main A: 2-pax [G, 10, 11], 4-pax [12, 20, 21]
+ * - Main B: 2-pax [13, 15, 22, 23], 4-pax [14, 16]
+ * - Private Room: 2-pax [30], 4-pax [31, 32, 33, 34]
+ * - Bar: [B1, B2, B3, B4] (Sala d'attesa e tampone)
+ */
+export const SECTION_CANONICAL_TABLES: Record<DiningSectionId, { twoPax: string[]; fourPax: string[] }> = {
+  section_1: {
+    twoPax: ['G', '10', '11'],
+    fourPax: ['12', '20', '21'],
+  },
+  section_2: {
+    twoPax: ['13', '15', '22', '23'],
+    fourPax: ['14', '16'],
+  },
+  section_3: {
+    twoPax: ['30'],
+    fourPax: ['31', '32', '33', '34'],
+  },
+};
+
+/**
+ * Finds all single tables and pre-existing groups available for a booking,
+ * ordered by the exact 3-section round-robin algorithm and capacity rules:
+ * - 1-2 pax: Strict 2-seaters (Main A -> Main B -> Private Room). No 4-seaters in direct matches!
+ * - 3-5 pax: 4-seaters (Main A -> Main B -> Private Room).
+ * - Bar tables (B1-B4) are buffer/waiting area.
  */
 export function getAvailableSingleAndGroupTables(
   date: string,
@@ -373,8 +460,9 @@ export function getAvailableSingleAndGroupTables(
   const directMatches: TimeSlotOption[] = [];
   const oversizedMatches: TimeSlotOption[] = [];
 
-  // Calculate live section load for this specific 15-minute arrival slot
+  // Calculate live section arrivals & section round-robin rotation order
   const sectionArrivals = getSectionArrivalsForSlot(date, startTime, reservations, excludeReservationId);
+  const prioritizedSectionOrder = getSectionRoundRobinOrder(date, startTime, reservations, excludeReservationId);
 
   // 1. Check existing active TableGroups for this date
   const dateGroups = activeGroups.filter((g) => g.groupDate === date);
@@ -403,7 +491,7 @@ export function getAvailableSingleAndGroupTables(
       };
 
       if (group.totalCapacity >= partySize) {
-        if (group.totalCapacity <= partySize + 2) {
+        if (partySize > 4 && group.totalCapacity <= partySize + 2) {
           directMatches.push(option);
         } else {
           oversizedMatches.push(option);
@@ -414,7 +502,7 @@ export function getAvailableSingleAndGroupTables(
 
   // 2. Check individual tables
   for (const table of tables) {
-    // If the table is part of an active group on this date, we handle it as part of that group
+    // If the table is part of an active group on this date, handle it as part of that group
     const isPartOfActiveGroup = dateGroups.some((g) =>
       g.memberTableIds.includes(table.id)
     );
@@ -431,52 +519,167 @@ export function getAvailableSingleAndGroupTables(
 
     if (isFree) {
       const cap = table.capacityOverride || table.capacity;
+      const isBar = table.zone === 'bar' || ['B1', 'B2', 'B3', 'B4'].includes(table.id);
       const section = getTableDiningSection(table.id, table.zone);
-      const arrivalsInSec = sectionArrivals[section.id] || 0;
+      const arrivalsInSec = isBar ? 99 : (sectionArrivals[section.id] || 0);
 
       const option: TimeSlotOption = {
         tableId: table.id,
-        tableName: `Tavolo ${table.tableNumber}`,
+        tableName: table.id === 'G' ? 'Tavolo G (Booth VIP)' : `Tavolo ${table.tableNumber}`,
         capacity: cap,
         isGroup: false,
         memberTableIds: [table.id],
         zone: table.zone,
         fitScore: Math.max(0, cap - partySize),
-        sectionId: section.id,
-        sectionName: section.name,
-        serverName: section.serverName,
+        sectionId: isBar ? 'bar_waiting' : section.id,
+        sectionName: isBar ? "Bar / Area d'Attesa Tampone" : section.name,
+        serverName: isBar ? 'Banco Bar' : section.serverName,
         sectionArrivalsAtSlot: arrivalsInSec,
-        isRecommendedForBalancing: arrivalsInSec === 0,
+        isRecommendedForBalancing: !isBar && arrivalsInSec === 0,
       };
 
-      if (cap >= partySize) {
-        if (cap <= partySize + 2) {
+      if (isBar) {
+        // Bar tables are buffer / holding area: placed in oversized/alternative matches
+        if (cap >= partySize) {
+          oversizedMatches.push(option);
+        }
+        continue;
+      }
+
+      // DINING ROOM RULES:
+      if (partySize <= 2) {
+        // Strict: 1-2 pax ONLY matches 2-seaters (capacity === 2) as direct matches
+        if (cap === 2) {
           directMatches.push(option);
-        } else {
+        } else if (cap >= 4) {
+          // Do not sit 2 pax in 4-seater: place in oversizedMatches as last resort fallback
+          oversizedMatches.push(option);
+        }
+      } else if (partySize <= 5) {
+        // 3-5 pax matches 4-seaters (capacity >= 4)
+        if (cap >= 4 && cap <= 5) {
+          directMatches.push(option);
+        } else if (cap > 5) {
+          oversizedMatches.push(option);
+        }
+      } else {
+        // 6+ pax: matches large tables or merges
+        if (cap >= partySize && cap <= partySize + 2) {
+          directMatches.push(option);
+        } else if (cap > partySize + 2) {
           oversizedMatches.push(option);
         }
       }
     }
   }
 
-  // Sort by section load balancing (prioritize sections with 0 arrivals in this 15-min slot), then by fit score
-  const sortFn = (a: TimeSlotOption, b: TimeSlotOption) => {
-    // 1. Prioritize sections with 0 arrivals in this slot
-    if (a.isRecommendedForBalancing && !b.isRecommendedForBalancing) return -1;
-    if (!a.isRecommendedForBalancing && b.isRecommendedForBalancing) return 1;
+  // Helper sorting function strictly respecting:
+  // 1. Non-bar first
+  // 2. Section Round-Robin Order (Main A -> Main B -> Private Room)
+  // 3. Exact table order within section (e.g. G, 10, 11 for Main A 2-pax; 12, 20, 21 for Main A 4-pax; etc.)
+  const sortDiningOptions = (a: TimeSlotOption, b: TimeSlotOption) => {
+    // Non-bar before bar
+    const aIsBar = a.sectionId === 'bar_waiting' || a.zone === 'bar';
+    const bIsBar = b.sectionId === 'bar_waiting' || b.zone === 'bar';
+    if (aIsBar && !bIsBar) return 1;
+    if (!aIsBar && bIsBar) return -1;
 
-    // 2. Fewest arrivals in section at this slot
-    const diffArrivals = (a.sectionArrivalsAtSlot || 0) - (b.sectionArrivalsAtSlot || 0);
-    if (diffArrivals !== 0) return diffArrivals;
+    // Compare section round-robin priority index
+    const aSecIndex = prioritizedSectionOrder.indexOf(a.sectionId as DiningSectionId);
+    const bSecIndex = prioritizedSectionOrder.indexOf(b.sectionId as DiningSectionId);
 
-    // 3. Closest fit score
+    const normASec = aSecIndex === -1 ? 99 : aSecIndex;
+    const normBSec = bSecIndex === -1 ? 99 : bSecIndex;
+
+    if (normASec !== normBSec) {
+      return normASec - normBSec;
+    }
+
+    // Inside same section, sort by table priority list
+    const secKey = a.sectionId as DiningSectionId;
+    const canon = SECTION_CANONICAL_TABLES[secKey];
+    if (canon) {
+      const list = partySize <= 2 ? canon.twoPax : canon.fourPax;
+      const aIdx = list.indexOf(a.tableId);
+      const bIdx = list.indexOf(b.tableId);
+      const normA = aIdx === -1 ? 99 : aIdx;
+      const normB = bIdx === -1 ? 99 : bIdx;
+      if (normA !== normB) return normA - normB;
+    }
+
+    // Closest fit score
     return a.fitScore - b.fitScore;
   };
 
-  directMatches.sort(sortFn);
-  oversizedMatches.sort(sortFn);
+  directMatches.sort(sortDiningOptions);
+  oversizedMatches.sort(sortDiningOptions);
 
   return { directMatches, oversizedMatches };
+}
+
+export interface AutoAssignResult {
+  table: TimeSlotOption | null;
+  sectionId?: DiningSectionId;
+  sectionName?: string;
+  serverName?: string;
+  reason: string;
+}
+
+/**
+ * Automates table allocation for a new booking using the exact management rotation:
+ * 1. Checks 15-minute slot capacity
+ * 2. Picks next section in sequence: Main A -> Main B -> Private Room
+ * 3. Matches party capacity (1-2 pax -> 2-seaters, 3-5 pax -> 4-seaters)
+ * 4. Never places 1-2 pax in 4-seaters while any 2-seater is available across dining sections
+ */
+export function findBestAutoAssignedTable(
+  date: string,
+  startTime: string,
+  endTime: string,
+  partySize: number,
+  tables: RestaurantTable[],
+  reservations: Reservation[],
+  activeGroups: TableGroup[] = [],
+  excludeReservationId?: string
+): AutoAssignResult {
+  const { directMatches, oversizedMatches } = getAvailableSingleAndGroupTables(
+    date,
+    startTime,
+    endTime,
+    partySize,
+    tables,
+    reservations,
+    activeGroups,
+    excludeReservationId
+  );
+
+  if (directMatches.length > 0) {
+    const chosen = directMatches[0];
+    const sec = chosen.sectionId ? DINING_SECTIONS[chosen.sectionId as DiningSectionId] : undefined;
+    return {
+      table: chosen,
+      sectionId: chosen.sectionId as DiningSectionId,
+      sectionName: chosen.sectionName,
+      serverName: chosen.serverName,
+      reason: `Assegnazione automatica ottimale: ${chosen.tableName} in ${chosen.sectionName} (${partySize <= 2 ? 'Tavolo 2-pax dedicato' : 'Tavolo 4-pax dedicato'}). Rotazione bilanciata per il cameriere ${chosen.serverName}.`,
+    };
+  }
+
+  if (oversizedMatches.length > 0) {
+    const chosen = oversizedMatches[0];
+    return {
+      table: chosen,
+      sectionId: chosen.sectionId as DiningSectionId,
+      sectionName: chosen.sectionName,
+      serverName: chosen.serverName,
+      reason: `Tutti i tavoli dedicati da ${partySize <= 2 ? '2' : '4'} persone sono occupati nelle 3 sezioni per le ${startTime}. Proposto ${chosen.tableName} come alternativa.`,
+    };
+  }
+
+  return {
+    table: null,
+    reason: `Nessun tavolo disponibile per ${partySize} persone nello scaglione delle ${startTime}.`,
+  };
 }
 
 /**
@@ -593,13 +796,11 @@ export function computeTableInstantStatus(
     (r) => r.reservationDate === date && r.status !== 'cancelled'
   );
 
-  const equivalentIds = tableId === '21' || tableId === '21_b' ? ['21', '21_b'] : [tableId];
-
   // Find active seated or currently running reservation
   const currentActive = dateReservations.find((r) => {
     const isTargeted =
-      equivalentIds.includes(r.tableId) ||
-      (r.assignedTableIds && r.assignedTableIds.some((id) => equivalentIds.includes(id)));
+      r.tableId === tableId ||
+      (r.assignedTableIds && r.assignedTableIds.includes(tableId));
     if (!isTargeted) return false;
 
     if (r.status === 'seated') return true;
